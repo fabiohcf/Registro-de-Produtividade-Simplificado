@@ -7,7 +7,7 @@ def criar_tabelas():
         CREATE TABLE IF NOT EXISTS metas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             semana INTEGER,
-            meta INTEGER
+            meta_semanal INTEGER
         )
     ''')
     cursor.execute('''
