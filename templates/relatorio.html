@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Relatório Semanal</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='relatorio.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+
+  <style>
+    body {
+      background: #111;
+      color: #eee;
+      text-align: center;
+    }
+    #container {
+      width: 100%;
+      overflow-x: auto;
+    }
+    #graficoWrapper {
+      min-width: 1200px;
+      width: max-content;
+    }
+    canvas {
+      max-height: 500px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Relatório Semanal</h1>
+  <div id="container">
+    <div id="graficoWrapper">
+      <canvas id="graficoSemanal"></canvas>
+    </div>
+  </div>
+
+  <script>
+    const ctx = document.getElementById('graficoSemanal').getContext('2d');
+
+    const labels = {{ labels | tojson }};
+    const valores = {{ valores | tojson }};
+    const cores = {{ cores | tojson }};
+    const metas = {{ metas | tojson }};
+    const sessoes = {{ sessoes | tojson }};
+
+    Chart.register(ChartDataLabels);
+
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Horas Realizadas',
+          data: valores,
+          backgroundColor: cores,
+          datalabels: {
+            color: 'white',
+            anchor: 'end',
+            align: 'end',
+            font: { weight: 'bold' },
+            formatter: (value) => value.toFixed(1) + 'h'
+          }
+        },
+        {
+          label: 'Meta Semanal',
+          data: metas,
+          type: 'line',
+          borderColor: 'rgba(255, 255, 255, 0.9)',
+          borderWidth: 3,
+          fill: false,
+          pointBackgroundColor: 'white',
+          datalabels: {
+            color: 'white',
+            anchor: 'end',
+            align: 'top',
+            font: { weight: 'bold' },
+            formatter: (value) => value.toFixed(1) + 'h'
+          }
+        }]
+      },
+      options: {
+        responsive: true,
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
+        plugins: {
+          datalabels: {
+            display: true
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const index = context.dataIndex;
+                if (context.datasetIndex === 0) {
+                  return `Sessões: ${sessoes[index]}`;
+                } else {
+                  return '';
+                }
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Horas'
+            }
+          },
+          x: {
+            ticks: {
+              font: {
+                weight: 'bolder'
+              }
+            }
+          },
+        }
+      }
+    });
+  </script>
+  <a href="{{ url_for('meta') }}" style="display: inline-block; margin: 20px; color: #0af;">Editar Meta Semanal</a>
+</body>
+</html>

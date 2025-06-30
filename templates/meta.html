@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <title>Meta Semanal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Editar Meta Semanal</h1>
+    <form method="POST">
+        <label for="semana_ano">Escolha a semana:</label>
+        <select name="semana_ano" id="semana_ano" required>
+            {% for ano, semana in semanas_existentes %}
+                <option value="{{ ano }}-{{ semana }}">
+                    {{ ano }} - S{{ semana }}
+                </option>
+            {% endfor %}
+        </select>
+        <br><br>
+        <input type="number" name="meta" placeholder="Meta em horas" required>
+        <button type="submit">Salvar Meta</button>
+    </form>
+    <a href="{{ url_for('relatorio') }}">⬅ Voltar para Relatório</a>
+
+</body>
+</html>

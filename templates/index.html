@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Registro de Produtividade</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+</head>
+<body>
+    <div class="container">
+        <h1>Registro de Produtividade</h1>
+        <div id="cronometro">00:00:00</div>
+        <div id="tempo-bruto">Tempo Bruto: 00:00:00</div>
+
+        
+        <div class="secao-principal-acao">
+            <form method="POST" onsubmit="return confirmarFinalizacao()" class="secao-principal-acao">
+                <button type="button" id="iniciar">Iniciar</button>
+                <button type="button" id="reiniciar">Reiniciar</button>
+
+                <input type="text" name="descricao" id="descricao-campo" placeholder="Descrição (opcional)">
+
+                <select name="tipo" id="tipo-campo" required>
+                    <option value="">Selecione o tipo</option>
+                    <option value="Estudo">Estudo</option>
+                    <option value="Simulado">Simulado</option>
+                    <option value="Redação">Redação</option>
+                </select>
+
+                <input type="hidden" id="tempo_liquido" name="tempo_liquido">
+                <input type="hidden" id="tempo_bruto" name="tempo_bruto">
+
+                <button type="submit" id="finalizar-btn">Finalizar</button>
+
+                <a href="{{ url_for('relatorio') }}" class="link-relatorio">Ver Relatórios</a>
+            </form>
+
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
