@@ -35,8 +35,8 @@ def salvar_sessao(descricao, tipo, tempo_liquido, tempo_bruto):
     conn = sqlite3.connect('sessoes.db')
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO sessoes (descricao, tipo, tempo_liquido, tempo_bruto, data_hora)
-        VALUES (?, ?, ?, ?, datetime('now'))
+        INSERT INTO sessoes (descricao, tipo, tempo_liquido, tempo_bruto, data)
+        VALUES (?, ?, ?, ?, date('now'))
     ''', (descricao, tipo, tempo_liquido, tempo_bruto))
     conn.commit()
     conn.close()

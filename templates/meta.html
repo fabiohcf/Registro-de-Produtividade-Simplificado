@@ -1,26 +1,44 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8" />
-    <title>Meta Semanal</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta charset="UTF-8" />
+  <title>Meta Semanal</title>
+  <style>
+    body { background: #111; color: #eee; text-align: center; padding: 40px; }
+    form { display: inline-block; margin-top: 20px; }
+    input, select, button { padding: 10px; margin: 10px; }
+  </style>
 </head>
 <body>
+
+  {% if obrigatorio_ano and obrigatorio_semana %}
+    <h1>Defina a meta desta semana</h1>
+    <p>Semana {{ obrigatorio_semana }} de {{ obrigatorio_ano }}</p>
+  {% else %}
     <h1>Editar Meta Semanal</h1>
-    <form method="POST">
-        <label for="semana_ano">Escolha a semana:</label>
-        <select name="semana_ano" id="semana_ano" required>
-            {% for ano, semana in semanas_existentes %}
-                <option value="{{ ano }}-{{ semana }}">
-                    {{ ano }} - S{{ semana }}
-                </option>
-            {% endfor %}
-        </select>
-        <br><br>
-        <input type="number" name="meta" placeholder="Meta em horas" required>
-        <button type="submit">Salvar Meta</button>
-    </form>
-    <a href="{{ url_for('relatorio') }}">⬅ Voltar para Relatório</a>
+  {% endif %}
+
+  <form method="post">
+    {% if obrigatorio_ano and obrigatorio_semana %}
+      <input type="hidden" name="semana_ano" value="{{ obrigatorio_ano }}-{{ obrigatorio_semana }}">
+    {% else %}
+      <label for="semana_ano">Selecione a Semana:</label>
+      <select name="semana_ano" id="semana_ano" required>
+        {% for ano, semana in semanas_existentes %}
+          <option value="{{ ano }}-{{ semana }}">Ano: {{ ano }} - Semana: {{ semana }}</option>
+        {% endfor %}
+      </select>
+    {% endif %}
+
+    <br>
+    <label for="meta">Meta (horas):</label>
+    <input type="number" name="meta" id="meta" min="1" required>
+
+    <br>
+    <button type="submit">Salvar</button>
+  </form>
+
+  <p><a href="{{ url_for('index') }}">Voltar para o início</a></p>
 
 </body>
 </html>
