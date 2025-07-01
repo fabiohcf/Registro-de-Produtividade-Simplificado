@@ -17,7 +17,7 @@ def criar_tabelas():
             tipo TEXT,
             tempo_liquido TEXT,
             tempo_bruto TEXT,
-            data_hora TEXT
+            data TEXT
         )
     ''')
     conn.commit()
