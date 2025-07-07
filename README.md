@@ -20,7 +20,7 @@ Tecnologias Utilizadas:
 - Git (controle de versão)
 
 Estrutura do Projeto:
-´´´
+```
 ├── app.py
 ├── database.py
 ├── sessoes.db
@@ -34,7 +34,7 @@ Estrutura do Projeto:
 │   ├── style.css
 │   ├── relatorio.css
 │   ├── script.js
-´´´
+```
 
 Siga os passos abaixo para executar o projeto em ambiente local:
 
