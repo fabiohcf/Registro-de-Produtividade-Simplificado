@@ -37,34 +37,31 @@ Estrutura do Projeto:
 ```
 
 Siga os passos abaixo para executar o projeto em ambiente local:
-
-Clone este repositório:
-git clone https://github.com/fabiohcf/Registro-de-Produtividade-Simplificado/
-cd Registro-de-Produtividade-Simplificado
+- Clone este repositório: git clone https://github.com/fabiohcf/Registro-de-Produtividade-Simplificado/
+- cd Registro-de-Produtividade-Simplificado
 
 Crie um ambiente virtual Python:
-python -m venv venv
-source venv/bin/activate  # Linux/macOS
-venv\Scripts\activate    # Windows
+- python -m venv venv
+- source venv/bin/activate  # Linux/macOS
+- venv\Scripts\activate    # Windows
 
 Instale as dependências:
-pip install -r requirements.txt
+- pip install -r requirements.txt
 
 Execute o servidor local:
-python app.py
+- python app.py
 
 Acesse o sistema no navegador:
-http://127.0.0.1:5000
+- http://127.0.0.1:5000
 
 Deploy em Produção:
-A aplicação está disponível em ambiente de produção na plataforma Render:
-[🔗 Acesse aqui](https://registro-de-produtividade-simplificado.onrender.com/)
+- A aplicação está disponível em ambiente de produção na plataforma Render: https://registro-de-produtividade-simplificado.onrender.com/
 
 Licença:
-Uso educacional para fins de demonstração acadêmica.
+- Uso educacional para fins de demonstração acadêmica.
 
 Autor:
-Desenvolvido por Fábio Henrique Costa Ferreira
-Aluno do curso de Análise e Desenvolvimento de Sistemas - UNIASSELVI
+- Desenvolvido por Fábio Henrique Costa Ferreira
+- Aluno do curso de Análise e Desenvolvimento de Sistemas - UNIASSELVI
 
 Este repositório é parte de uma atividade acadêmica e tem como objetivo demonstrar na prática conceitos de desenvolvimento web, banco de dados, versionamento de código e publicação em nuvem.
