@@ -1,4 +1,6 @@
 body {
+    background: #fff;
+    color: #111;
     font-family: Arial, sans-serif;
     text-align: center;
     max-width: 600px;
@@ -82,15 +84,27 @@ a {
 }
 
 @media (max-width: 350px) {
-    .secao-principal-acao button,
-    .secao-principal-acao input[type="text"],
-    .secao-principal-acao select {
-        max-width: 260px;
-        font-size: 1em;
-        padding: 12px 8px;
-    }
-    button {
-      font-size: 18px;
-    }
+  .secao-principal-acao button,
+  .secao-principal-acao input[type="text"],
+  .secao-principal-acao select {
+      max-width: 260px;
+      font-size: 1em;
+      padding: 12px 8px;
+  }
+  button {
+    font-size: 18px;
+  }
+}
+
+/* Tema escuro */
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #111;
+    color: #eee;
+  }
+  .container {
+    background: #222;
+    border: 3px solid #555;
+  }
 }
 
