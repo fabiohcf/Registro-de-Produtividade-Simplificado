@@ -10,9 +10,6 @@ ENV/
 env.bak/
 venv.bak/
 .pyenv/
-# pyenv (se usar)
-# .python-version
-# pixi (se usar)
 .pixi
 
 # Arquivos de cache e de compilação
@@ -75,7 +72,6 @@ cover/
 *.pot
 
 # Django stuff:
-# *.log # Já incluído na seção "Arquivos de log"
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
@@ -101,20 +97,10 @@ target/
 profile_default/
 ipython_config.py
 
-# PDM / Poetry / Pipenv / UV (Gerenciadores de dependências)
-# Recomenda-se COMITAR os arquivos .lock (ex: poetry.lock, pdm.lock, Pipfile.lock, uv.lock)
-# Descomente se VOCÊ NÃO QUISER comitá-los:
-# Pipfile.lock
-# poetry.lock
-# poetry.toml
-# pdm.lock
-# pdm.toml
+
 .pdm-python
 .pdm-build/
-# pixi (lock file)
-# pixi.lock
 
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
 __pypackages__/
 
 # Celery stuff
@@ -138,15 +124,9 @@ celerybeat.pid
 # mkdocs documentation
 /site
 
-# PyCharm / JetBrains (descomente se quiser ignorar a pasta .idea/)
-#.idea/
-
-# Visual Studio Code (descomente se quiser ignorar a pasta .vscode/)
-#.vscode/
-
 # Abstra
 .abstra/
 
 # Cursor
 .cursorignore
-.cursorindexingignore
+.cursorindexingignore.env
