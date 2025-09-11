@@ -1,27 +1,42 @@
 # app/tests/test_sessions.py
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from werkzeug.security import generate_password_hash
 from app.models.user import User
 from app.models.session import Session
 
 def test_create_session(db_session):
     unique_email = f"{uuid.uuid4()}@example.com"
-    user = User(username="User Session", email=unique_email, password="123456")
+
+    # Cria o usuário com senha hash
+    user = User(
+        username="User Session",
+        email=unique_email,
+        password_hash=generate_password_hash("123456")
+    )
     db_session.add(user)
     db_session.commit()
 
-    start_time = datetime.now()
+    # Usa datetime timezone-aware consistente com o model
+    start_time = datetime.now(timezone.utc)
     end_time = start_time + timedelta(hours=1)
-    duration = int((end_time - start_time).total_seconds() / 60)
+    duration_hours = (end_time - start_time).total_seconds() / 3600
 
-    sessao = Session(user_id=user.id, start_time=start_time, end_time=end_time, duration=duration)
+    # Cria a sessão
+    sessao = Session(
+        user_id=user.id,
+        started_at=start_time,
+        finished_at=end_time,
+        duration_hours=duration_hours
+    )
     db_session.add(sessao)
     db_session.commit()
 
+    # Valida a sessão criada
     db_sessao = db_session.query(Session).filter_by(user_id=user.id).first()
     assert db_sessao is not None
     assert db_sessao.user_id == user.id
-    assert db_sessao.start_time == start_time
-    assert db_sessao.end_time == end_time
-    assert db_sessao.duration == duration
+    assert db_sessao.started_at == start_time
+    assert db_sessao.finished_at == end_time
+    assert db_sessao.duration_hours == duration_hours

@@ -1,16 +1,28 @@
 # app/tests/test_goals.py
 
 import uuid
+from werkzeug.security import generate_password_hash
 from app.models.user import User
 from app.models.goal import Goal
 
 def test_create_goal(client, db_session):
     unique_email = f"{uuid.uuid4()}@example.com"
-    user = User(username="User Goal", email=unique_email, password="123456")
+
+    # Cria o usuário com hash da senha
+    user = User(
+        username="User Goal",
+        email=unique_email,
+        password_hash=generate_password_hash("123456")
+    )
     db_session.add(user)
     db_session.commit()
 
-    goal_data = {"user_id": user.id, "description": "Aprender Python", "type": "Estudo", "target_hours": 10}
+    goal_data = {
+        "user_id": user.id,
+        "description": "Aprender Python",
+        "category": "Study",  # Alterado de type -> category
+        "target_hours": 10
+    }
     response = client.post("/api/metas/", json=goal_data)
     assert response.status_code == 201
 

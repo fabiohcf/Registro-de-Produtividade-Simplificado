@@ -14,7 +14,7 @@ def list_goals():
         return jsonify([{
             "id": g.id,
             "description": g.description,
-            "type": g.type,
+            "category": g.category,  # corrigido de type -> category
             "target_hours": g.target_hours,
             "user_id": g.user_id
         } for g in goals]), 200
@@ -29,7 +29,7 @@ def create_goal():
         goal = Goal(
             user_id=data["user_id"],
             description=data["description"],
-            type=data.get("type", ""),
+            category=data.get("category", ""),  # corrigido de type -> category
             target_hours=data.get("target_hours", 0)
         )
         session.add(goal)
