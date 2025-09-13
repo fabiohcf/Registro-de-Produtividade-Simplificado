@@ -1,4 +1,4 @@
-# app/tests/conftest.py
+#tests/conftest.py
 
 import pytest
 from app.database import Base, SessionLocal, engine
