@@ -3,7 +3,9 @@
 import json
 import uuid
 import pytest
+from datetime import timedelta
 from werkzeug.security import generate_password_hash
+from flask_jwt_extended import create_refresh_token
 from app.models.user import User
 
 def test_login_endpoint(client, db_session):
@@ -159,3 +161,32 @@ def test_refresh_sem_cookie(client):
     data = resp.get_json()
     assert "msg" in data
     print("Resposta refresh sem cookie:", data)
+
+def test_refresh_token_expirado(client, db_session):
+    """Testa se refresh com token expirado retorna 401"""
+
+    # Cria usuário
+    unique_email = f"{uuid.uuid4()}@example.com"
+    user = User(
+        username="ExpiredUser",
+        email=unique_email,
+        password_hash=generate_password_hash("123456")
+    )
+    db_session.add(user)
+    db_session.commit()
+
+    # Cria token expirado dentro do app context
+    with client.application.app_context():
+        expired_token = create_refresh_token(identity=str(user.id), expires_delta=timedelta(seconds=-1))
+
+    # Configura o cookie expirado no client
+    client.set_cookie(
+        key="refresh_token_cookie",
+        value=expired_token,
+        domain="localhost",
+        path="/"
+    )
+
+    # Tenta fazer refresh com token expirado
+    refresh_resp = client.post("/auth/refresh")
+    assert refresh_resp.status_code == 401
