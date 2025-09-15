@@ -1,6 +1,7 @@
 # tests/conftest.py
 
 import pytest
+import gc
 from app import create_app
 from app.database import Base, engine, SessionLocal
 
@@ -10,10 +11,11 @@ def setup_database():
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
+    engine.dispose()  # Fecha todas as conexões
+    gc.collect()      # Força coleta de garbage
 
 @pytest.fixture
 def db_session():
-    """Cria uma sessão de banco para cada teste."""
     session = SessionLocal()
     try:
         yield session
@@ -22,14 +24,19 @@ def db_session():
 
 @pytest.fixture
 def client(db_session):
-    """Cria um cliente de teste com cookies habilitados e DB injetado."""
-    app = create_app()
+    app = create_app(testing=True)
     app.config["TESTING"] = True
 
-    # Substitui SessionLocal do app pela sessão de teste
+    # Override da session para testes
     from app import database
     database.SessionLocal = lambda: db_session
 
-    # Cria o client com cookies habilitados
+    # Contexto completo para teardown
     with app.test_client(use_cookies=True) as client:
-        yield client
+        with app.app_context():
+            yield client
+
+    # Teardown completo
+    app.do_teardown_appcontext()
+    engine.dispose()
+    gc.collect()
