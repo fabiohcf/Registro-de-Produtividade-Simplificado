@@ -12,16 +12,24 @@ def setup_database():
     Base.metadata.drop_all(bind=engine)
 
 @pytest.fixture
-def client():
-    app = create_app()
-    app.config["TESTING"] = True
-    with app.test_client() as client:
-        yield client
-
-@pytest.fixture
 def db_session():
+    """Cria uma sessão de banco para cada teste."""
     session = SessionLocal()
     try:
         yield session
     finally:
         session.close()
+
+@pytest.fixture
+def client(db_session):
+    """Cria um cliente de teste com cookies habilitados e DB injetado."""
+    app = create_app()
+    app.config["TESTING"] = True
+
+    # Substitui SessionLocal do app pela sessão de teste
+    from app import database
+    database.SessionLocal = lambda: db_session
+
+    # Cria o client com cookies habilitados
+    with app.test_client(use_cookies=True) as client:
+        yield client
