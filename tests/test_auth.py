@@ -130,3 +130,32 @@ def test_login_failure(client, db_session):
     assert resp2.status_code == 401
     data2 = resp2.get_json()
     assert data2["msg"] == "Credenciais inválidas"
+
+    # Teste: refresh com token inválido
+def test_refresh_com_token_invalido(client):
+    """Deve retornar 401 ou 422 quando o token de refresh é inválido"""
+    
+    # Simula envio de cookie com token inválido
+    invalid_token = "token_invalido"
+    resp = client.post(
+        "/auth/refresh",
+        headers={"Cookie": f"refresh_token_cookie={invalid_token}"}
+    )
+    
+    # Verifica se retornou 401 ou 422
+    assert resp.status_code in (401, 422)
+    data = resp.get_json()
+    assert "msg" in data
+    print("Resposta refresh com token inválido:", data)
+
+# Teste: refresh sem cookie
+def test_refresh_sem_cookie(client):
+    """Deve retornar 401 ou 422 quando não há cookie de refresh"""
+    
+    resp = client.post("/auth/refresh")
+    
+    # Verifica se retornou 401 ou 422
+    assert resp.status_code in (401, 422)
+    data = resp.get_json()
+    assert "msg" in data
+    print("Resposta refresh sem cookie:", data)
