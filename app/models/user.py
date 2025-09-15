@@ -3,7 +3,7 @@
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from app.database import Base
+from app.database import Base, SessionLocal
 
 class User(Base):
     __tablename__ = "users"
@@ -16,3 +16,8 @@ class User(Base):
 
     goals = relationship("Goal", back_populates="user", cascade="all, delete-orphan")
     sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
+
+    @staticmethod
+    def get_by_username(username: str):
+        with SessionLocal() as session:
+            return session.query(User).filter_by(username=username).first()

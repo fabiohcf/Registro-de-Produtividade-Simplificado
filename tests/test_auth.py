@@ -1,74 +1,39 @@
 # tests/test_auth.py
 
 import json
-import uuid
-import pytest
-from werkzeug.security import generate_password_hash
-from app.models.user import User
-from app import create_app
-from app.database import Base, engine, sessionmaker
 
-@pytest.fixture
-def client():
-    app = create_app()
-    app.config["TESTING"] = True
-    with app.test_client() as client:
-        yield client
-
-@pytest.fixture
-def db_session():
-    Base.metadata.create_all(bind=engine)
-    session = sessionmaker(bind=engine)()
-    yield session
-    session.close()
-    Base.metadata.drop_all(bind=engine)
-
-def test_login_endpoint(client, db_session):
-    # Cria usuário
-    unique_email = f"{uuid.uuid4()}@example.com"
-    user = User(
-        username="Test User",
-        email=unique_email,
-        password_hash=generate_password_hash("123456")
-    )
-    db_session.add(user)
-    db_session.commit()
-
-    # Faz login
-    response = client.post(
+def test_login_endpoint(client):
+    resp = client.post(
         "/auth/login",
-        data=json.dumps({"username": "Test User", "password": "123456"}),
-        content_type="application/json"
+        data=json.dumps({"username": "TestRefresh", "password": "123456"}),
+        content_type="application/json",
     )
-    data = response.get_json()
-    assert response.status_code == 200
-    assert "access_token" in data
-    assert "refresh_token" in data
+    assert resp.status_code == 200
+    assert "Set-Cookie" in resp.headers
 
-def test_refresh_endpoint(client, db_session):
-    # Cria usuário
-    unique_email = f"{uuid.uuid4()}@example.com"
-    user = User(
-        username="Test User 2",
-        email=unique_email,
-        password_hash=generate_password_hash("123456")
-    )
-    db_session.add(user)
-    db_session.commit()
-
-    # Login para pegar refresh token
+def test_refresh_endpoint(client):
+    # Login para gerar cookies
     login_resp = client.post(
         "/auth/login",
-        data=json.dumps({"username": "Test User 2", "password": "123456"}),
-        content_type="application/json"
+        data=json.dumps({"username": "TestRefresh", "password": "123456"}),
+        content_type="application/json",
     )
-    refresh_token = login_resp.get_json()["refresh_token"]
+    assert login_resp.status_code == 200
 
-    # Usa refresh token para gerar novo access token
-    response = client.post(
+    # Extrai refresh_token_cookie
+    cookies = login_resp.headers.getlist("Set-Cookie")
+    refresh_cookie = None
+    for c in cookies:
+        if "refresh_token_cookie" in c:
+            refresh_cookie = c.split(";")[0].split("=", 1)[1]
+            break
+    assert refresh_cookie, "Refresh token não encontrado nos cookies"
+
+    # Usa o refresh_token para pedir novo access token
+    refresh_resp = client.post(
         "/auth/refresh",
-        headers={"Authorization": f"Bearer {refresh_token}"}
+        headers={"Cookie": f"refresh_token_cookie={refresh_cookie}"}
     )
-    data = response.get_json()
-    assert response.status_code == 200
-    assert "access_token" in data
+    print("Resposta do refresh:", refresh_resp.json)
+    assert refresh_resp.status_code == 200
+    assert "access_token" in refresh_resp.json
