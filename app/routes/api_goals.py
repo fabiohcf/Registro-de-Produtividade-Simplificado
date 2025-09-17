@@ -14,7 +14,7 @@ def list_goals():
         return jsonify([{
             "id": g.id,
             "description": g.description,
-            "category": g.category,  # corrigido de type -> category
+            "category": g.category,
             "target_hours": g.target_hours,
             "user_id": g.user_id
         } for g in goals]), 200
@@ -24,13 +24,23 @@ def list_goals():
 @api_goals_bp.route("/", methods=["POST"])
 def create_goal():
     data = request.json
+
+    # Validação básica
+    description = data.get("description", "").strip()
+    category = data.get("category", "").strip()
+    target_hours = data.get("target_hours", 0)
+    user_id = data.get("user_id")
+
+    if not description or target_hours < 0 or not user_id:
+        return jsonify({"error": "Dados da meta inválidos"}), 400
+
     session = SessionLocal()
     try:
         goal = Goal(
-            user_id=data["user_id"],
-            description=data["description"],
-            category=data.get("category", ""),  # corrigido de type -> category
-            target_hours=data.get("target_hours", 0)
+            user_id=user_id,
+            description=description,
+            category=category,
+            target_hours=target_hours
         )
         session.add(goal)
         session.commit()

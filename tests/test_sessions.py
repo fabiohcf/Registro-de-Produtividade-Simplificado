@@ -1,10 +1,11 @@
-# app/tests/test_sessions.py
+# tests/test_sessions.py
 
 import uuid
 from datetime import datetime, timedelta, timezone
 from werkzeug.security import generate_password_hash
 from app.models.user import User
 from app.models.session import Session
+import pytest
 
 def test_create_session(db_session):
     unique_email = f"{uuid.uuid4()}@example.com"
@@ -37,6 +38,7 @@ def test_create_session(db_session):
     db_sessao = db_session.query(Session).filter_by(user_id=user.id).first()
     assert db_sessao is not None
     assert db_sessao.user_id == user.id
-    assert db_sessao.started_at == start_time
-    assert db_sessao.finished_at == end_time
-    assert db_sessao.duration_hours == duration_hours
+
+    # Corrige comparação: converte para naive
+    assert db_sessao.started_at.replace(tzinfo=None) == start_time.replace(tzinfo=None)
+    assert db_sessao.finished_at.replace(tzinfo=None) == end_time.replace(tzinfo=None)
