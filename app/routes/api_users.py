@@ -5,7 +5,8 @@ from werkzeug.security import generate_password_hash
 from app.models.user import User
 from app.database import SessionLocal
 
-api_users_bp = Blueprint("api_users", __name__)
+# Blueprint em inglês
+api_users_bp = Blueprint("api_users_bp", __name__)
 
 @api_users_bp.route("/", methods=["POST"])
 def create_user():
@@ -19,6 +20,7 @@ def create_user():
         )
         session.add(user)
         session.commit()
+        # Mensagem ao usuário em português
         return jsonify({"message": "Usuário criado com sucesso!"}), 201
     finally:
         session.close()
@@ -28,6 +30,7 @@ def list_users():
     session = SessionLocal()
     try:
         users = session.query(User).all()
+        # Retorno de dados técnicos da API
         return jsonify([
             {"id": u.id, "username": u.username, "email": u.email}
             for u in users

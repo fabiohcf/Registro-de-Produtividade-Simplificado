@@ -4,13 +4,15 @@ from flask import Blueprint, request, jsonify
 from app.models.goal import Goal
 from app.database import SessionLocal
 
-api_goals_bp = Blueprint("api_goals", __name__)
+# Blueprint em inglês
+api_goals_bp = Blueprint("api_goals_bp", __name__)
 
 @api_goals_bp.route("/", methods=["GET"])
 def list_goals():
     session = SessionLocal()
     try:
         goals = session.query(Goal).all()
+        # Dados técnicos da API em inglês
         return jsonify([{
             "id": g.id,
             "description": g.description,
@@ -44,6 +46,7 @@ def create_goal():
         )
         session.add(goal)
         session.commit()
+        # Mensagem ao usuário em português
         return jsonify({"message": "Meta criada com sucesso!"}), 201
     finally:
         session.close()

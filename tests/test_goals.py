@@ -24,7 +24,7 @@ def test_create_goal(client, db_session):
         "category": "Study",
         "target_hours": 10
     }
-    response = client.post("/api/metas/", json=goal_data)
+    response = client.post("/api/goals/", json=goal_data)
     assert response.status_code == 201
 
     db_goal = db_session.query(Goal).filter_by(description="Aprender Python").first()
@@ -40,7 +40,7 @@ def test_create_goal_invalid_data(client):
     ]
 
     for payload in payloads:
-        response = client.post("/api/metas/", json=payload)
+        response = client.post("/api/goals/", json=payload)
         assert response.status_code == 400
         data = response.get_json()
         assert "error" in data

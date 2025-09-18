@@ -2,8 +2,8 @@
 
 from sqlalchemy import Column, Integer, ForeignKey, Float, DateTime
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 from app.database import Base
+from sqlalchemy.sql import func
 
 class Session(Base):
     __tablename__ = "sessions"
@@ -12,6 +12,7 @@ class Session(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     goal_id = Column(Integer, ForeignKey("goals.id", ondelete="SET NULL"))
     duration_hours = Column(Float, nullable=False)
+
     started_at = Column(DateTime(timezone=True), server_default=func.now())
     finished_at = Column(DateTime(timezone=True), nullable=True)
 

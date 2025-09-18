@@ -17,7 +17,7 @@ def test_get_users(client, db_session):
     db_session.commit()
 
     # Faz a requisição para listar usuários
-    response = client.get("/api/usuarios/")
+    response = client.get("/api/users/")
     assert response.status_code == 200
 
     data = response.get_json()

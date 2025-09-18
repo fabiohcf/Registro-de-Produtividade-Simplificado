@@ -15,7 +15,7 @@ def test_create_user(client, db_session):
     }
 
     # Envia POST para criar usuário
-    response = client.post("/api/usuarios/", json=user_data)
+    response = client.post("/api/users/", json=user_data)
     assert response.status_code == 201
 
     # Valida que o usuário foi criado no banco
