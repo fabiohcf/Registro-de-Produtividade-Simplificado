@@ -1,13 +1,8 @@
-from flask import Flask
-from config.database import criar_tabelas
+from app import create_app
+from app.database import init_db
 
-app = Flask(__name__)
-
-@app.route("/")
-def home():
-    return "Registro de Produtividade - Versão Expandida 🚀"
+app = create_app()
 
 if __name__ == "__main__":
-    # Cria as tabelas no banco antes de rodar a aplicação
-    criar_tabelas()
+    init_db()
     app.run(debug=True)
