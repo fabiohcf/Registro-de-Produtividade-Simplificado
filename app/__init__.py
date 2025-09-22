@@ -5,6 +5,7 @@ from flask_jwt_extended import JWTManager
 
 jwt = JWTManager()
 
+
 def create_app(testing: bool = False):
     app = Flask(__name__)
 
@@ -37,10 +38,10 @@ def create_app(testing: bool = False):
     from app.routes.api_sessions import bp_sessions
 
     # Registra blueprints
-    app.register_blueprint(api_users_bp, url_prefix="/api/users")
-    app.register_blueprint(api_goals_bp, url_prefix="/api/goals")
-    app.register_blueprint(auth_bp, url_prefix="/auth")
-    app.register_blueprint(main_bp, url_prefix="/")  
-    app.register_blueprint(bp_sessions, url_prefix="/api/sessions")
+    app.register_blueprint(api_users_bp)
+    app.register_blueprint(api_goals_bp)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(main_bp)
+    app.register_blueprint(bp_sessions)
 
     return app

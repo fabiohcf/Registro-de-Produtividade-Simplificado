@@ -5,7 +5,7 @@ from app.models.goal import Goal
 from app.database import SessionLocal
 
 # Blueprint em inglês
-api_goals_bp = Blueprint("api_goals_bp", __name__)
+api_goals_bp = Blueprint("api_goals_bp", __name__, url_prefix="/api/goals")
 
 @api_goals_bp.route("/", methods=["GET"])
 def list_goals():
