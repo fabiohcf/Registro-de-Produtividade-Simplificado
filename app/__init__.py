@@ -2,15 +2,19 @@
 
 from flask import Flask
 from flask_jwt_extended import JWTManager
+import os
+from dotenv import load_dotenv
 
 jwt = JWTManager()
 
 
 def create_app(testing: bool = False):
+    # Carrega variáveis de ambiente de um arquivo .env, se existir
+    load_dotenv()
     app = Flask(__name__)
 
     # Configurações do JWT
-    app.config["JWT_SECRET_KEY"] = "sua_chave_secreta"  # Troque em produção
+    app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "dev-secret-change-me")
     app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
     app.config["JWT_ACCESS_COOKIE_NAME"] = "access_token_cookie"
     app.config["JWT_REFRESH_COOKIE_NAME"] = "refresh_token_cookie"
