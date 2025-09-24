@@ -98,7 +98,7 @@ def get_user(user_id):
     with SessionLocal() as session:
         user = session.get(User, user_id)
         if not user:
-            return jsonify({"error": "Usuário não encontrado."}), 404
+            return jsonify({"error": "Usuário não encontrado"}), 404
         return (
             jsonify({"id": user.id, "username": user.username, "email": user.email}),
             200,
@@ -111,10 +111,10 @@ def delete_user(user_id):
     with SessionLocal() as session:
         user = session.get(User, user_id)
         if not user:
-            return jsonify({"error": "Usuário não encontrado."}), 404
+            return jsonify({"error": "Usuário não encontrado"}), 404
         session.delete(user)
         session.commit()
-        return jsonify({"message": "Usuário deletado com sucesso."}), 200
+        return jsonify({"message": "Usuário deletado com sucesso"}), 200
 
 
 @api_users_bp.route("/<int:user_id>", methods=["PUT"])

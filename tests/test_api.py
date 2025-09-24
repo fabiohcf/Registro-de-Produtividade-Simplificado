@@ -4,6 +4,7 @@ import uuid
 from werkzeug.security import generate_password_hash
 from app.models.user import User
 
+
 def test_get_users(client, db_session):
     unique_email = f"{uuid.uuid4()}@example.com"
 
@@ -11,7 +12,7 @@ def test_get_users(client, db_session):
     user = User(
         username="Test User API",
         email=unique_email,
-        password_hash=generate_password_hash("123456")
+        password_hash=generate_password_hash("123456"),
     )
     db_session.add(user)
     db_session.commit()

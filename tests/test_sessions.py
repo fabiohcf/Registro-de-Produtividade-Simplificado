@@ -8,6 +8,7 @@ from app.models.session import Session
 from app.database import SessionLocal
 import pytest
 
+
 def test_create_session():
     session = SessionLocal()
 
@@ -17,7 +18,7 @@ def test_create_session():
         user = User(
             username="User Session",
             email=unique_email,
-            password_hash=generate_password_hash("123456")
+            password_hash=generate_password_hash("123456"),
         )
         session.add(user)
         session.commit()
@@ -31,7 +32,7 @@ def test_create_session():
             user_id=user.id,
             started_at=start_time,
             finished_at=end_time,
-            duration_hours=duration_hours
+            duration_hours=duration_hours,
         )
         session.add(sessao)
         session.commit()
@@ -49,6 +50,7 @@ def test_create_session():
     finally:
         session.close()
 
+
 def test_start_pause_finish_session(client):
     # Cria usuário para o teste
     session = SessionLocal()
@@ -57,7 +59,7 @@ def test_start_pause_finish_session(client):
         user = User(
             username="User API",
             email=unique_email,
-            password_hash=generate_password_hash("123456")
+            password_hash=generate_password_hash("123456"),
         )
         session.add(user)
         session.commit()

@@ -6,6 +6,7 @@ from app.models.user import User
 from app.models.goal import Goal
 import pytest
 
+
 def test_create_goal(client, db_session):
     unique_email = f"{uuid.uuid4()}@example.com"
 
@@ -13,7 +14,7 @@ def test_create_goal(client, db_session):
     user = User(
         username="User Goal",
         email=unique_email,
-        password_hash=generate_password_hash("123456")
+        password_hash=generate_password_hash("123456"),
     )
     db_session.add(user)
     db_session.commit()
@@ -22,7 +23,7 @@ def test_create_goal(client, db_session):
         "user_id": user.id,
         "description": "Aprender Python",
         "category": "Study",
-        "target_hours": 10
+        "target_hours": 10,
     }
     response = client.post("/api/goals/", json=goal_data)
     assert response.status_code == 201
@@ -31,12 +32,22 @@ def test_create_goal(client, db_session):
     assert db_goal is not None
     assert db_goal.user_id == user.id
 
+
 def test_create_goal_invalid_data(client):
     # Dados inválidos: descrição vazia, target_hours negativo, user_id ausente
     payloads = [
         {"description": "", "category": "Study", "target_hours": 10, "user_id": 1},
-        {"description": "Aprender Flask", "category": "Study", "target_hours": -5, "user_id": 1},
-        {"description": "Aprender Flask", "category": "Study", "target_hours": 10}  # sem user_id
+        {
+            "description": "Aprender Flask",
+            "category": "Study",
+            "target_hours": -5,
+            "user_id": 1,
+        },
+        {
+            "description": "Aprender Flask",
+            "category": "Study",
+            "target_hours": 10,
+        },  # sem user_id
     ]
 
     for payload in payloads:

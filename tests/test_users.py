@@ -5,17 +5,20 @@ import pytest
 from werkzeug.security import generate_password_hash
 from app.models.user import User
 
-@pytest.mark.parametrize("username,email,password", [
-    ("Test User 1", f"{uuid.uuid4()}@example.com", "123456"),
-    ("Test User 2", f"{uuid.uuid4()}@example.com", "abcdef")
-])
+
+@pytest.mark.parametrize(
+    "username,email,password",
+    [
+        ("Test User 1", f"{uuid.uuid4()}@example.com", "123456"),
+        ("Test User 2", f"{uuid.uuid4()}@example.com", "abcdef"),
+    ],
+)
 def test_create_user(client, db_session, username, email, password):
     """Testa criação de usuário via endpoint POST /api/users/"""
-    resp = client.post("/api/users/", json={
-        "username": username,
-        "email": email,
-        "password": password
-    })
+    resp = client.post(
+        "/api/users/",
+        json={"username": username, "email": email, "password": password},
+    )
     assert resp.status_code == 201
     data = resp.get_json()
     assert "user_id" in data
@@ -26,6 +29,7 @@ def test_create_user(client, db_session, username, email, password):
     assert user.username == username
     assert user.email == email
 
+
 def test_list_users(client, db_session):
     """Testa listagem de usuários via GET /api/users/"""
     resp = client.get("/api/users/")
@@ -34,11 +38,15 @@ def test_list_users(client, db_session):
     assert isinstance(data, list)
     assert all("id" in u and "username" in u and "email" in u for u in data)
 
+
 def test_get_user_by_id(client, db_session):
     """Testa busca de usuário por ID via GET /api/users/<id>"""
     # Cria usuário manualmente
-    user = User(username="Fetch User", email=f"{uuid.uuid4()}@example.com",
-                password_hash=generate_password_hash("123456"))
+    user = User(
+        username="Fetch User",
+        email=f"{uuid.uuid4()}@example.com",
+        password_hash=generate_password_hash("123456"),
+    )
     db_session.add(user)
     db_session.commit()
 
@@ -52,10 +60,14 @@ def test_get_user_by_id(client, db_session):
     resp = client.get("/api/users/999999")
     assert resp.status_code == 404
 
+
 def test_update_user(client, db_session):
     """Testa atualização de usuário via PUT /api/users/<id>"""
-    user = User(username="Old Name", email=f"{uuid.uuid4()}@example.com",
-                password_hash=generate_password_hash("123456"))
+    user = User(
+        username="Old Name",
+        email=f"{uuid.uuid4()}@example.com",
+        password_hash=generate_password_hash("123456"),
+    )
     db_session.add(user)
     db_session.commit()
 
@@ -64,10 +76,14 @@ def test_update_user(client, db_session):
     db_session.refresh(user)
     assert user.username == "New Name"
 
+
 def test_delete_user(client, db_session):
     """Testa exclusão de usuário via DELETE /api/users/<id>"""
-    user = User(username="To Delete", email=f"{uuid.uuid4()}@example.com",
-                password_hash=generate_password_hash("123456"))
+    user = User(
+        username="To Delete",
+        email=f"{uuid.uuid4()}@example.com",
+        password_hash=generate_password_hash("123456"),
+    )
     db_session.add(user)
     db_session.commit()
 

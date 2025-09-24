@@ -39,13 +39,15 @@ def test_create_user_with_duplicate_email(client, db_session):
 
     # Primeira criação
     resp1 = client.post(
-        "/api/users/", json={"username": "User1", "email": email, "password": "123456"}
+        "/api/users/",
+        json={"username": "User1", "email": email, "password": "123456"},
     )
     assert resp1.status_code == 201
 
     # Segunda criação com mesmo email
     resp2 = client.post(
-        "/api/users/", json={"username": "User2", "email": email, "password": "123456"}
+        "/api/users/",
+        json={"username": "User2", "email": email, "password": "123456"},
     )
     assert resp2.status_code == 400
     data = resp2.get_json()
@@ -112,7 +114,7 @@ def test_create_goal_with_invalid_user_id(client, db_session):
 
 def test_start_session_with_invalid_user_id(client, db_session):
     """Testa início de sessão com usuário inexistente."""
-    resp = client.post("/api/sessions/start", json={"user_id": 99999})  # ID inexistente
+    resp = client.post("api/sessions/start", json={"user_id": 99999})  # ID inexistente
     assert resp.status_code == 404
     data = resp.get_json()
     assert data["error"] == "Usuário não encontrado"
