@@ -45,7 +45,7 @@ def test_create_session():
         # Comparação UTC
         assert db_sessao.started_at.astimezone(timezone.utc) == start_time
         assert db_sessao.finished_at.astimezone(timezone.utc) == end_time
-        assert abs(db_sessao.duration_hours - duration_hours) < 1e-6
+        assert abs(float(db_sessao.duration_hours) - duration_hours) < 1e-6
 
     finally:
         session.close()

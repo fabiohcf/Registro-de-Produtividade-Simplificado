@@ -4,6 +4,7 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime, timezone
 from app.database import SessionLocal
 from app.models.session import Session
+from app.models.goal import Goal
 from app.models.user import User
 
 bp_sessions = Blueprint("bp_sessions", __name__, url_prefix="/api/sessions")
@@ -17,6 +18,7 @@ def start_session():
         return jsonify({"error": "Dados JSON são obrigatórios"}), 400
 
     user_id = data.get("user_id")
+    goal_id = data.get("goal_id")  # opcional
     if not user_id:
         return jsonify({"error": "ID do usuário é obrigatório"}), 400
 
@@ -32,8 +34,23 @@ def start_session():
         if not user:
             return jsonify({"error": "Usuário não encontrado"}), 404
 
+        # Se goal_id foi informado, validar existência
+        goal_ref = None
+        if goal_id is not None:
+            if not isinstance(goal_id, int) or goal_id <= 0:
+                return (
+                    jsonify(
+                        {"error": "ID da meta deve ser um número inteiro positivo"}
+                    ),
+                    400,
+                )
+            goal_ref = db.get(Goal, goal_id)
+            if not goal_ref:
+                return jsonify({"error": "Meta não encontrada"}), 404
+
         new_session = Session(
             user_id=user_id,
+            goal_id=goal_id if goal_ref else None,
             started_at=datetime.now(timezone.utc),
             finished_at=None,
             duration_hours=0,
@@ -43,7 +60,11 @@ def start_session():
         db.refresh(new_session)
         return (
             jsonify(
-                {"message": "Sessão iniciada com sucesso", "session_id": new_session.id}
+                {
+                    "message": "Sessão iniciada com sucesso",
+                    "session_id": new_session.id,
+                    "goal_id": new_session.goal_id,
+                }
             ),
             201,
         )
@@ -76,7 +97,7 @@ def pause_session():
             jsonify(
                 {
                     "message": "Sessão pausada",
-                    "duration_hours": session_obj.duration_hours,
+                    "duration_hours": float(session_obj.duration_hours),
                 }
             ),
             200,
@@ -133,8 +154,45 @@ def finish_session():
             jsonify(
                 {
                     "message": "Sessão finalizada com sucesso",
-                    "duration_hours": session_obj.duration_hours,
+                    "duration_hours": float(session_obj.duration_hours),
                 }
             ),
             200,
         )
+
+
+@bp_sessions.route("/set_goal", methods=["POST"])
+def set_session_goal():
+    """Associa uma sessão existente a uma meta existente."""
+    data = request.json
+    if not data:
+        return jsonify({"error": "Dados JSON são obrigatórios"}), 400
+
+    session_id = data.get("session_id")
+    goal_id = data.get("goal_id")
+
+    if not session_id or not goal_id:
+        return jsonify({"error": "ID da sessão e ID da meta são obrigatórios"}), 400
+
+    if not isinstance(session_id, int) or not isinstance(goal_id, int):
+        return jsonify({"error": "IDs devem ser números inteiros"}), 400
+
+    with SessionLocal() as db:
+        session_obj = db.get(Session, session_id)
+        if not session_obj:
+            return jsonify({"error": "Sessão não encontrada"}), 404
+
+        goal_obj = db.get(Goal, goal_id)
+        if not goal_obj:
+            return jsonify({"error": "Meta não encontrada"}), 404
+
+        # Garante que a meta pertença ao mesmo usuário (opcional, se desejado)
+        if goal_obj.user_id != session_obj.user_id:
+            return (
+                jsonify({"error": "Meta não pertence ao mesmo usuário da sessão"}),
+                400,
+            )
+
+        session_obj.goal_id = goal_id
+        db.commit()
+        return jsonify({"message": "Meta associada à sessão com sucesso"}), 200

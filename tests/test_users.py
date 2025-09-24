@@ -1,7 +1,7 @@
 # tests/test_users_api.py
 
 import uuid
-import pytest
+import git
 from werkzeug.security import generate_password_hash
 from app.models.user import User
 

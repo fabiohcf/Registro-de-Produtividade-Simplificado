@@ -114,7 +114,7 @@ def test_create_goal_with_invalid_user_id(client, db_session):
 
 def test_start_session_with_invalid_user_id(client, db_session):
     """Testa início de sessão com usuário inexistente."""
-    resp = client.post("api/sessions/start", json={"user_id": 99999})  # ID inexistente
+    resp = client.post("/api/sessions/start", json={"user_id": 99999})  # ID inexistente
     assert resp.status_code == 404
     data = resp.get_json()
     assert data["error"] == "Usuário não encontrado"
