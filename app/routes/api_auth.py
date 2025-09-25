@@ -13,6 +13,7 @@ from flask_jwt_extended import (
 from app.models.user import User
 from app.database import SessionLocal
 
+
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
 @auth_bp.route("/login", methods=["POST"])

@@ -13,9 +13,9 @@ class Session(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     goal_id = Column(Integer, ForeignKey("goals.id", ondelete="SET NULL"))
     # precisão de horas com 4 casas decimais
-    duration_hours = Column(Numeric(10, 4), nullable=False)
+    duration_hours = Column(Numeric(10, 4), nullable=False, default=0.0)
 
-    started_at = Column(DateTime(timezone=True), server_default=func.now())
+    started_at = Column(DateTime(timezone=True), nullable=True)
     finished_at = Column(DateTime(timezone=True), nullable=True)
 
     user = relationship("User", back_populates="sessions")

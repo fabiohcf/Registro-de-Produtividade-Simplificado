@@ -2,6 +2,7 @@
 
 import uuid
 import git
+import pytest
 from werkzeug.security import generate_password_hash
 from app.models.user import User
 

@@ -2,8 +2,9 @@
 
 from flask import Flask
 from flask_jwt_extended import JWTManager
-import os
 from dotenv import load_dotenv
+import os
+
 
 jwt = JWTManager()
 
@@ -47,5 +48,6 @@ def create_app(testing: bool = False):
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(bp_sessions)
+
 
     return app
