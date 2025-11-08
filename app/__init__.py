@@ -3,16 +3,20 @@
 from flask import Flask
 from flask_jwt_extended import JWTManager
 from dotenv import load_dotenv
+from app.routes.api_test import api_test_bp
+from app.extensions import init_extensions
+from app.routes.api_health import api_health_bp
 import os
 
-
 jwt = JWTManager()
-
 
 def create_app(testing: bool = False):
     # Carrega variáveis de ambiente de um arquivo .env, se existir
     load_dotenv()
     app = Flask(__name__)
+
+    # Inicializa extensões (como CORS)
+    init_extensions(app)
 
     # Configurações do JWT
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "dev-secret-change-me")
@@ -48,6 +52,7 @@ def create_app(testing: bool = False):
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(bp_sessions)
-
+    app.register_blueprint(api_test_bp)
+    app.register_blueprint(api_health_bp)
 
     return app

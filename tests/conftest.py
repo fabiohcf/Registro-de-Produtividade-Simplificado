@@ -40,3 +40,4 @@ def client(db_session):
     app.do_teardown_appcontext()
     engine.dispose()
     gc.collect()
+

@@ -8,46 +8,39 @@ import pytest
 
 
 def test_create_goal(client, db_session):
-    unique_email = f"{uuid.uuid4()}@example.com"
-
-    # Cria o usuário com hash da senha
+    # Cria usuário com UUID
     user = User(
-        username="User Goal",
-        email=unique_email,
+        username=f"User Goal {uuid.uuid4()}",
+        email=f"{uuid.uuid4()}@example.com",
         password_hash=generate_password_hash("123456"),
     )
     db_session.add(user)
     db_session.commit()
+    db_session.refresh(user)
 
     goal_data = {
-        "user_id": user.id,
+        "user_id": str(user.id),  # UUID como string
         "description": "Aprender Python",
         "category": "Study",
         "target_hours": 10,
     }
+
     response = client.post("/api/goals/", json=goal_data)
     assert response.status_code == 201
 
     db_goal = db_session.query(Goal).filter_by(description="Aprender Python").first()
     assert db_goal is not None
-    assert db_goal.user_id == user.id
+    assert str(db_goal.user_id) == str(user.id)
 
 
 def test_create_goal_invalid_data(client):
-    # Dados inválidos: descrição vazia, target_hours negativo, user_id ausente
+    # UUID de usuário inválido para teste
+    invalid_uuid = str(uuid.uuid4())
+
     payloads = [
-        {"description": "", "category": "Study", "target_hours": 10, "user_id": 1},
-        {
-            "description": "Aprender Flask",
-            "category": "Study",
-            "target_hours": -5,
-            "user_id": 1,
-        },
-        {
-            "description": "Aprender Flask",
-            "category": "Study",
-            "target_hours": 10,
-        },  # sem user_id
+        {"description": "", "category": "Study", "target_hours": 10, "user_id": invalid_uuid},
+        {"description": "Aprender Flask", "category": "Study", "target_hours": -5, "user_id": invalid_uuid},
+        {"description": "Aprender Flask", "category": "Study", "target_hours": 10},  # sem user_id
     ]
 
     for payload in payloads:

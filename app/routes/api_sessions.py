@@ -9,7 +9,7 @@ from app.utils.logging_utils import log_action
 from app.models.goal import Goal
 from app.models.user import User
 import os
-
+import uuid
 
 bp_sessions = Blueprint("bp_sessions", __name__, url_prefix="/api/sessions")
 
@@ -17,12 +17,15 @@ bp_sessions = Blueprint("bp_sessions", __name__, url_prefix="/api/sessions")
 os.makedirs("logs", exist_ok=True)
 
 
-def validate_positive_int(value, name):
-    """Valida se value é inteiro positivo"""
-    if not isinstance(value, int) or value <= 0:
-        return jsonify({"error": f"{name} deve ser um número inteiro positivo"}), 400
-    return None
+def validate_uuid(value, name):
+    """Valida se value é um UUID válido"""
+    try:
+        return uuid.UUID(str(value))
+    except (ValueError, TypeError):
+        return jsonify({"error": f"{name} inválido"}), 400
 
+
+# ----------------- ROTAS -----------------
 
 @bp_sessions.route("/start", methods=["POST"])
 def start_session():
@@ -30,17 +33,18 @@ def start_session():
     if not data:
         return jsonify({"error": "Dados JSON são obrigatórios"}), 400
 
-    user_id = data.get("user_id")
-    goal_id = data.get("goal_id")
+    user_id_raw = data.get("user_id")
+    goal_id_raw = data.get("goal_id")
 
-    # Valida tipo e positivo
-    err = validate_positive_int(user_id, "ID do usuário")
-    if err:
-        return err
-    if goal_id is not None:
-        err = validate_positive_int(goal_id, "ID da meta")
-        if err:
-            return err
+    user_id = validate_uuid(user_id_raw, "ID do usuário")
+    if isinstance(user_id, tuple):  # erro
+        return user_id
+
+    goal_id = None
+    if goal_id_raw:
+        goal_id = validate_uuid(goal_id_raw, "ID da meta")
+        if isinstance(goal_id, tuple):
+            return goal_id
 
     with SessionLocal() as db:
         user = db.get(User, user_id)
@@ -70,8 +74,8 @@ def start_session():
 
         return jsonify({
             "message": "Sessão iniciada com sucesso",
-            "session_id": new_session.id,
-            "goal_id": new_session.goal_id
+            "session_id": str(new_session.id),
+            "goal_id": str(new_session.goal_id) if new_session.goal_id else None
         }), 201
 
 
@@ -81,10 +85,10 @@ def pause_session():
     if not data:
         return jsonify({"error": "Dados JSON são obrigatórios"}), 400
 
-    session_id = data.get("session_id")
-    err = validate_positive_int(session_id, "ID da sessão")
-    if err:
-        return err
+    session_id_raw = data.get("session_id")
+    session_id = validate_uuid(session_id_raw, "ID da sessão")
+    if isinstance(session_id, tuple):
+        return session_id
 
     with SessionLocal() as db:
         session_obj = db.get(Session, session_id)
@@ -113,10 +117,10 @@ def restart_session():
     if not data:
         return jsonify({"error": "Dados JSON são obrigatórios"}), 400
 
-    session_id = data.get("session_id")
-    err = validate_positive_int(session_id, "ID da sessão")
-    if err:
-        return err
+    session_id_raw = data.get("session_id")
+    session_id = validate_uuid(session_id_raw, "ID da sessão")
+    if isinstance(session_id, tuple):
+        return session_id
 
     with SessionLocal() as db:
         session_obj = db.get(Session, session_id)
@@ -136,13 +140,13 @@ def restart_session():
 @bp_sessions.route("/finish", methods=["POST"])
 def finish_session():
     data = request.json
-
     if not data:
         return jsonify({"error": "Dados JSON são obrigatórios"}), 400
 
-    session_id = data.get("session_id")
-    if not session_id or not isinstance(session_id, int) or session_id <= 0:
-        return jsonify({"error": "ID da sessão é obrigatório e deve ser um inteiro positivo"}), 400
+    session_id_raw = data.get("session_id")
+    session_id = validate_uuid(session_id_raw, "ID da sessão")
+    if isinstance(session_id, tuple):
+        return session_id
 
     with SessionLocal() as db:
         session_obj = db.get(Session, session_id)
@@ -151,13 +155,9 @@ def finish_session():
 
         if session_obj.finished_at is not None:
             return jsonify({"error": "Sessão já foi finalizada"}), 400
-
         if session_obj.started_at is None:
             log_action(session_obj.user_id, session_obj.id, "finish_failed_no_start")
-            print(f"DEBUG: session_obj.started_at is None? {session_obj.started_at}") 
             return jsonify({"error": "Sessão não foi iniciada corretamente"}), 400
-        else:
-            print(f"DEBUG: session_obj.started_at = {session_obj.started_at}")
 
         session_obj.finished_at = datetime.now(timezone.utc)
         session_obj.duration_hours = Decimal(
@@ -173,23 +173,21 @@ def finish_session():
         }), 200
 
 
-
-
 @bp_sessions.route("/set_goal", methods=["POST"])
 def set_session_goal():
     data = request.json
     if not data:
         return jsonify({"error": "Dados JSON são obrigatórios"}), 400
 
-    session_id = data.get("session_id")
-    goal_id = data.get("goal_id")
+    session_id_raw = data.get("session_id")
+    goal_id_raw = data.get("goal_id")
 
-    err1 = validate_positive_int(session_id, "ID da sessão")
-    err2 = validate_positive_int(goal_id, "ID da meta")
-    if err1:
-        return err1
-    if err2:
-        return err2
+    session_id = validate_uuid(session_id_raw, "ID da sessão")
+    goal_id = validate_uuid(goal_id_raw, "ID da meta")
+    if isinstance(session_id, tuple):
+        return session_id
+    if isinstance(goal_id, tuple):
+        return goal_id
 
     with SessionLocal() as db:
         session_obj = db.get(Session, session_id)
@@ -213,13 +211,13 @@ def set_session_goal():
 
 @bp_sessions.route("/list", methods=["GET"])
 def list_sessions():
-    user_id = request.args.get("user_id", type=int)
+    user_id_raw = request.args.get("user_id")
     start_date = request.args.get("start_date")
     end_date = request.args.get("end_date")
 
-    err = validate_positive_int(user_id, "ID do usuário")
-    if err:
-        return err
+    user_id = validate_uuid(user_id_raw, "ID do usuário")
+    if isinstance(user_id, tuple):
+        return user_id
 
     with SessionLocal() as db:
         query = db.query(Session).filter(Session.user_id == user_id)
@@ -230,9 +228,75 @@ def list_sessions():
         sessions = query.all()
 
         return jsonify([{
-            "id": s.id,
+            "id": str(s.id),
             "started_at": s.started_at.isoformat(),
             "finished_at": s.finished_at.isoformat() if s.finished_at else None,
             "duration_hours": float(s.duration_hours) if s.duration_hours else 0,
-            "goal_id": s.goal_id
+            "goal_id": str(s.goal_id) if s.goal_id else None
         } for s in sessions]), 200
+
+
+@bp_sessions.route("/frontend_finish", methods=["POST"])
+def finish_session_frontend():
+    """
+    Cria e finaliza sessão diretamente a partir dos dados do frontend.
+    Espera JSON:
+    {
+        "user_id": str (UUID),
+        "description": str,
+        "type": str,
+        "netTime": int,   # em segundos
+        "grossTime": int  # em segundos
+    }
+    """
+    data = request.json
+    if not data:
+        return jsonify({"error": "Dados JSON são obrigatórios"}), 400
+
+    user_id_raw = data.get("user_id")
+    description = data.get("description", "")
+    activity_type = data.get("type", "")
+    net_time = data.get("netTime")
+    gross_time = data.get("grossTime")
+
+    user_id = validate_uuid(user_id_raw, "user_id")
+    if isinstance(user_id, tuple):
+        return user_id
+
+    if not activity_type:
+        return jsonify({"error": "type obrigatório"}), 400
+    if net_time is None or gross_time is None:
+        return jsonify({"error": "netTime e grossTime obrigatórios"}), 400
+
+    with SessionLocal() as db:
+        user = db.get(User, user_id)
+        if not user:
+            return jsonify({"error": "Usuário não encontrado"}), 404
+
+        now = datetime.now(timezone.utc)
+
+        new_session = Session(
+            user_id=user_id,
+            description=description,
+            type=activity_type,
+            started_at=now,
+            finished_at=now,
+            duration_hours=Decimal(net_time) / 3600
+        )
+
+        db.add(new_session)
+        db.commit()
+        db.refresh(new_session)
+
+        log_action(user_id, new_session.id, "finish_frontend")
+
+        return jsonify({
+            "message": "Sessão registrada com sucesso",
+            "session_id": str(new_session.id)
+        }), 201
+
+def validate_uuid(value, field_name):
+    try:
+        return uuid.UUID(str(value))
+    except (ValueError, TypeError):
+        return jsonify({"error": f"{field_name} inválido"}), 400

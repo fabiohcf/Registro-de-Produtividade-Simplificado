@@ -91,13 +91,12 @@ def test_invalid_inputs(client, db_session):
     resp = client.post("/api/sessions/start", json={})
     assert resp.status_code == 400
 
-    resp = client.post("/api/sessions/pause", json={"session_id": 999999})
+    # UUID aleatório inexistente
+    nonexistent_uuid = str(uuid.uuid4())
+    resp = client.post("/api/sessions/pause", json={"session_id": nonexistent_uuid})
     assert resp.status_code == 404
 
-    resp = client.post("/api/sessions/set_goal", json={"session_id": 999999, "goal_id": 1})
-    assert resp.status_code == 404
-
-    resp = client.post("/api/sessions/set_goal", json={"session_id": 1, "goal_id": 999999})
+    resp = client.post("/api/sessions/set_goal", json={"session_id": nonexistent_uuid, "goal_id": str(uuid.uuid4())})
     assert resp.status_code in (400, 404)
 
 
@@ -118,7 +117,8 @@ def test_pause_finished_session(client, db_session, test_user):
 
 def test_restart_nonexistent_session(client):
     """Tenta reiniciar sessão inexistente"""
-    resp = client.post("/api/sessions/restart", json={"session_id": 999999})
+    nonexistent_uuid = str(uuid.uuid4())
+    resp = client.post("/api/sessions/restart", json={"session_id": nonexistent_uuid})
     assert resp.status_code == 404
 
 

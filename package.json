@@ -1,0 +1,11 @@
+{
+  "name": "registro-de-produtividade-root",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "start:full": "concurrently \"bash -c 'source venv/bin/activate && python run.py'\" \"cd frontend && npm run dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}

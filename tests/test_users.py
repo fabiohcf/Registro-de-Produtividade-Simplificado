@@ -1,7 +1,6 @@
 # tests/test_users_api.py
 
 import uuid
-import git
 import pytest
 from werkzeug.security import generate_password_hash
 from app.models.user import User
@@ -25,7 +24,7 @@ def test_create_user(client, db_session, username, email, password):
     assert "user_id" in data
 
     # Confirma no banco
-    user = db_session.query(User).filter_by(id=data["user_id"]).first()
+    user = db_session.query(User).filter_by(id=uuid.UUID(data["user_id"])).first()
     assert user is not None
     assert user.username == username
     assert user.email == email
@@ -50,15 +49,16 @@ def test_get_user_by_id(client, db_session):
     )
     db_session.add(user)
     db_session.commit()
+    db_session.refresh(user)
 
     resp = client.get(f"/api/users/{user.id}")
     assert resp.status_code == 200
     data = resp.get_json()
-    assert data["id"] == user.id
+    assert data["id"] == str(user.id)
     assert data["username"] == user.username
 
-    # Testa usuário inexistente
-    resp = client.get("/api/users/999999")
+    # Testa usuário inexistente com UUID aleatório
+    resp = client.get(f"/api/users/{uuid.uuid4()}")
     assert resp.status_code == 404
 
 
@@ -71,6 +71,7 @@ def test_update_user(client, db_session):
     )
     db_session.add(user)
     db_session.commit()
+    db_session.refresh(user)
 
     resp = client.put(f"/api/users/{user.id}", json={"username": "New Name"})
     assert resp.status_code == 200
@@ -87,6 +88,7 @@ def test_delete_user(client, db_session):
     )
     db_session.add(user)
     db_session.commit()
+    db_session.refresh(user)
 
     resp = client.delete(f"/api/users/{user.id}")
     assert resp.status_code == 200
