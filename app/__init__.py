@@ -4,6 +4,7 @@ from flask import Flask
 from flask_jwt_extended import JWTManager
 from dotenv import load_dotenv
 import os
+from app.database import db_session
 
 jwt = JWTManager()
 
@@ -17,12 +18,6 @@ def create_app(testing: bool = False):
     app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
     app.config["JWT_ACCESS_COOKIE_NAME"] = "access_token_cookie"
     app.config["JWT_REFRESH_COOKIE_NAME"] = "refresh_token_cookie"
-
-    # CONFIGURAÇÃO DO BANCO
-    if testing:
-        app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///test_produtividade.db"
-    else:
-        app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///produtividade.db")
 
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -49,5 +44,10 @@ def create_app(testing: bool = False):
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(bp_sessions)
+
+    # 🔹 IMPORTANTE: limpa a sessão do SQLAlchemy após cada request
+    @app.teardown_appcontext
+    def shutdown_session(exception=None):
+        db_session.remove()
 
     return app

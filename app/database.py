@@ -8,24 +8,23 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Detecta modo de teste via variável TESTING ou presença do PYTEST_CURRENT_TEST
+# Detecta modo de teste
 TESTING = os.getenv("TESTING", "").lower() in ("1", "true", "yes") or (
     "PYTEST_CURRENT_TEST" in os.environ
 )
 
+# Define URL do banco
 if TESTING:
-    # Em testes, usar SQLite em memória por isolamento e performance
     DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite:///:memory:")
 else:
-    # Em execução normal, exigir DATABASE_URL (priorizar PostgreSQL)
     DATABASE_URL = os.getenv("DATABASE_URL")
     if not DATABASE_URL:
         raise RuntimeError(
             "DATABASE_URL não definido. Ex.: postgresql+psycopg2://usuario:senha@localhost:5432/registro_prod"
         )
 
-# Se estiver em testes (pytest geralmente usa in-memory), força NullPool
-if DATABASE_URL.startswith("sqlite:///") and ":memory:" in DATABASE_URL:
+# Configuração do engine
+if DATABASE_URL.startswith("sqlite") and ":memory:" in DATABASE_URL:
     engine = create_engine(
         DATABASE_URL,
         connect_args={"check_same_thread": False},
@@ -33,10 +32,10 @@ if DATABASE_URL.startswith("sqlite:///") and ":memory:" in DATABASE_URL:
         future=True,
     )
 else:
-    # Para SQLite arquivo, ainda é necessário o check_same_thread=False; para Postgres, sem connect_args
     connect_args = (
         {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
     )
+
     engine = create_engine(
         DATABASE_URL,
         future=True,
@@ -44,28 +43,31 @@ else:
         pool_pre_ping=True,
     )
 
-# Sessão principal usada pelos blueprints e testes
-db_session = scoped_session(
-    sessionmaker(bind=engine, autocommit=False, autoflush=False)
+# Base dos models
+Base = declarative_base()
+
+# Session factory
+SessionLocal = sessionmaker(
+    bind=engine,
+    autocommit=False,
+    autoflush=False,
 )
 
-# Base para os models
-Base = declarative_base()
+# Scoped session para uso global
+db_session = scoped_session(SessionLocal)
+
 Base.query = db_session.query_property()
 
 
 def get_db_session():
     """
-    Gerador de sessão para uso como dependência.
+    Gerador de sessão para dependências (ex: rotas ou serviços).
     """
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
-
-
-SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 
 def init_db():
