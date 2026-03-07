@@ -45,3 +45,11 @@
 2026-03-07 12:08:18.570058 | Acesso ao endpoint /
 2026-03-07 12:08:18.571321 | Acesso ao endpoint /about
 2026-03-07 12:08:18.572844 | Healthcheck executado
+2026-03-07 12:09:51.900248 | Acesso ao endpoint /
+2026-03-07 12:09:51.901483 | Acesso ao endpoint /about
+2026-03-07 12:09:51.902895 | Healthcheck executado
+2026-03-07 16:26:58.437248 | Acesso ao endpoint /
+2026-03-07 16:27:21.384206 | Acesso ao endpoint /
+2026-03-07 19:44:38.911713 | Acesso ao endpoint /
+2026-03-07 19:44:38.913302 | Acesso ao endpoint /about
+2026-03-07 19:44:38.914883 | Healthcheck executado
