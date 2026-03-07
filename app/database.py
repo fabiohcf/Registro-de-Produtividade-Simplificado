@@ -1,9 +1,9 @@
 # app/database.py
 
 import os
-from sqlalchemy import create_engine
+from sqlalchemy import StaticPool, create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base, scoped_session
-from sqlalchemy.pool import NullPool
+from sqlalchemy.pool import StaticPool
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -28,7 +28,7 @@ if DATABASE_URL.startswith("sqlite") and ":memory:" in DATABASE_URL:
     engine = create_engine(
         DATABASE_URL,
         connect_args={"check_same_thread": False},
-        poolclass=NullPool,
+        poolclass=StaticPool,
         future=True,
     )
 else:
