@@ -130,3 +130,13 @@ celerybeat.pid
 # Cursor
 .cursorignore
 .cursorindexingignore.env
+
+__pycache__/
+*.pyc
+
+# Logs da aplicação
+logs/
+*.log
+
+# Logs gerados durante testes
+tests/logs/
