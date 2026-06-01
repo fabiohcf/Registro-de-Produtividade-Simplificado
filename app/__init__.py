@@ -2,6 +2,7 @@
 
 from flask import Flask
 from flask_jwt_extended import JWTManager
+from flask_cors import CORS  
 from dotenv import load_dotenv
 import os
 from app.database import db_session
@@ -13,6 +14,8 @@ def create_app(testing: bool = False):
 
     load_dotenv()
     app = Flask(__name__)
+
+    CORS(app, origins=["http://localhost:8080"])
 
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "dev-secret-change-me")
     app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
@@ -45,9 +48,10 @@ def create_app(testing: bool = False):
     app.register_blueprint(main_bp)
     app.register_blueprint(bp_sessions)
 
-    # 🔹 IMPORTANTE: limpa a sessão do SQLAlchemy após cada request
     @app.teardown_appcontext
     def shutdown_session(exception=None):
         db_session.remove()
+    
+    print(app.url_map)
 
     return app
