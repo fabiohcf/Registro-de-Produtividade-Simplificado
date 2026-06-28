@@ -33,14 +33,29 @@ class Goal(Base):
         nullable=False
     )
 
+    # Meta semanal de horas (opcional)
     target_hours = Column(
         Numeric(10, 2),
+        nullable=True
+    )
+
+    # Meta semanal de questões (opcional)
+    target_questions = Column(
+        Integer,
+        nullable=True
+    )
+
+    # Ano da semana ISO
+    year = Column(
+        Integer,
         nullable=False
     )
 
-    year = Column(Integer, nullable=False)
-
-    week_number = Column(Integer, nullable=False)
+    # Semana ISO (1–53)
+    week_number = Column(
+        Integer,
+        nullable=False
+    )
 
     created_at = Column(
         DateTime(timezone=True),
@@ -54,6 +69,5 @@ class Goal(Base):
 
     sessions = relationship(
         "Session",
-        back_populates="goal",
-        cascade="all, delete-orphan"
+        back_populates="goal"
     )
