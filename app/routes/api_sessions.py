@@ -8,6 +8,19 @@ from app.database import SessionLocal
 from app.utils.logging_utils import log_action
 from app.models.goal import Goal
 from app.models.user import User
+from app.routes.session_service import (
+    VALID_SESSION_TYPES,
+    ACTIVE_SESSION_STATUSES,
+    QUESTION_SESSION_TYPES,
+    get_request_data,
+    validate_positive_int,
+    validate_session_type,
+    get_session,
+    get_active_session,
+    validate_goal_week,
+    calculate_duration_hours,
+    serialize_session,
+)
 import os
 
 
@@ -17,267 +30,104 @@ bp_sessions = Blueprint("bp_sessions", __name__, url_prefix="/api/sessions")
 os.makedirs("logs", exist_ok=True)
 
 
-# ==========================================================
-# Session V2 constants
-# ==========================================================
-
-VALID_SESSION_TYPES = {
-    "study",
-    "revision",
-    "questions",
-    "essay",
-    "mock_exam",
-}
-
-ACTIVE_SESSION_STATUS = {
-    "running",
-    "paused",
-}
-
-QUESTION_SESSION_TYPES = {
-    "questions",
-    "mock_exam",
-}
-
-
-# ==========================================================
-# Generic validations
-# ==========================================================
-
-def validate_positive_int(value, field_name):
-    """
-    Valida se o valor é um inteiro positivo.
-    """
-    if not isinstance(value, int) or value <= 0:
-        return (
-            jsonify(
-                {"error": f"{field_name} deve ser um número inteiro positivo"}
-            ),
-            400,
-        )
-
-    return None
-
-
-def get_request_data():
-    """
-    Obtém o JSON da requisição.
-    """
-
-    data = request.get_json()
-
-    if not data:
-        return None, (
-            jsonify(
-                {"error": "Dados JSON são obrigatórios"}
-            ),
-            400,
-        )
-
-    return data, None
-
-
-# ==========================================================
-# Session helpers
-# ==========================================================
-
-def get_session(db, session_id):
-    """
-    Busca uma sessão pelo ID.
-    """
-
-    session = db.get(Session, session_id)
-
-    if session is None:
-        return None, (
-            jsonify(
-                {"error": "Sessão não encontrada"}
-            ),
-            404,
-        )
-
-    return session, None
-
-
-def get_active_session(db, user_id):
-    """
-    Retorna a sessão ativa do usuário.
-    """
-
-    return (
-        db.query(Session)
-        .filter(
-            Session.user_id == user_id,
-            Session.status.in_(ACTIVE_SESSION_STATUS),
-        )
-        .first()
-    )
-
-
-def validate_session_type(session_type):
-    """
-    Valida o tipo da sessão.
-    """
-
-    if session_type not in VALID_SESSION_TYPES:
-
-        return (
-            jsonify(
-                {
-                    "error": (
-                        "Tipo de sessão inválido."
-                    )
-                }
-            ),
-            400,
-        )
-
-    return None
-
-
-def calculate_duration_hours(
-    started_at,
-    finished_at,
-    paused_seconds,
-):
-    """
-    Calcula o tempo líquido da sessão.
-    """
-
-    elapsed_seconds = (
-        finished_at - started_at
-    ).total_seconds()
-
-    active_seconds = elapsed_seconds - paused_seconds
-
-    if active_seconds < 0:
-        active_seconds = 0
-
-    return Decimal(active_seconds / 3600)
-
-
-def validate_goal_week(session_obj, goal_obj):
-    """
-    Verifica se a meta pertence à mesma semana da sessão.
-    """
-
-    if session_obj.started_at is None:
-        return (
-            jsonify(
-                {"error": "Sessão sem data de início"}
-            ),
-            400,
-        )
-
-    year, week_number, _ = (
-        session_obj.started_at.isocalendar()
-    )
-
-    if (
-        goal_obj.year != year
-        or goal_obj.week_number != week_number
-    ):
-        return (
-            jsonify(
-                {
-                    "error":
-                    "A meta deve pertencer à mesma semana da sessão."
-                }
-            ),
-            400,
-        )
-
-    return None
-
-
-def serialize_session(session):
-    """
-    Serializa uma sessão para JSON.
-    """
-
-    return {
-        "id": session.id,
-        "user_id": session.user_id,
-        "goal_id": session.goal_id,
-
-        "status": session.status,
-
-        "session_type": session.session_type,
-        "description": session.description,
-
-        "started_at": (
-            session.started_at.isoformat()
-            if session.started_at
-            else None
-        ),
-
-        "finished_at": (
-            session.finished_at.isoformat()
-            if session.finished_at
-            else None
-        ),
-
-        "duration_hours": (
-            float(session.duration_hours)
-            if session.duration_hours
-            else 0
-        ),
-
-        "paused_seconds": session.paused_seconds,
-
-        "questions_total": session.questions_total,
-        "questions_correct": session.questions_correct,
-    }
-
 @bp_sessions.route("/start", methods=["POST"])
 def start_session():
-    data = request.json
-    if not data:
-        return jsonify({"error": "Dados JSON são obrigatórios"}), 400
+    data, error = get_request_data()
+    if error:
+        return error
 
     user_id = data.get("user_id")
     goal_id = data.get("goal_id")
+    session_type = data.get("session_type")
+    description = data.get("description")
 
-    # Valida tipo e positivo
     err = validate_positive_int(user_id, "ID do usuário")
     if err:
         return err
+
     if goal_id is not None:
         err = validate_positive_int(goal_id, "ID da meta")
         if err:
             return err
 
+    err = validate_session_type(session_type)
+    if err:
+        return err
+
+    if description:
+        description = description.strip()
+
+    now = datetime.now(timezone.utc)
+
     with SessionLocal() as db:
+
         user = db.get(User, user_id)
         if not user:
             return jsonify({"error": "Usuário não encontrado"}), 404
 
-        active = db.query(Session).filter_by(user_id=user_id, finished_at=None).first()
-        if active:
-            return jsonify({"error": "Usuário já possui sessão ativa"}), 400
+        active_session = get_active_session(db, user_id)
 
-        goal_ref = db.get(Goal, goal_id) if goal_id else None
-        if goal_id and not goal_ref:
-            return jsonify({"error": "Meta não encontrada"}), 404
+        if active_session:
+            return jsonify(
+                {"error": "Usuário já possui uma sessão ativa"}
+            ), 400
+
+        goal_obj = None
+
+        if goal_id is not None:
+
+            goal_obj = db.get(Goal, goal_id)
+
+            if goal_obj is None:
+                return jsonify({"error": "Meta não encontrada"}), 404
+
+            if goal_obj.user_id != user_id:
+                return jsonify(
+                    {"error": "Meta não pertence ao usuário"}
+                ), 400
+
+            err = validate_goal_week(now, goal_obj)
+            if err:
+                return err
 
         new_session = Session(
             user_id=user_id,
-            goal_id=goal_id if goal_ref else None,
-            started_at=datetime.now(timezone.utc),
+
+            goal_id=goal_obj.id if goal_obj else None,
+
+            session_type=session_type,
+            description=description,
+
+            status="running",
+
+            started_at=now,
             finished_at=None,
-            duration_hours=0
+
+            duration_hours=Decimal("0"),
+
+            paused_seconds=0,
+            paused_at=None,
+
+            questions_total=None,
+            questions_correct=None,
         )
+
         db.add(new_session)
         db.commit()
         db.refresh(new_session)
 
-        log_action(user_id, new_session.id, "start")
+        log_action(
+            new_session.user_id,
+            new_session.id,
+            "start",
+        )
 
-        return jsonify({
-            "message": "Sessão iniciada com sucesso",
-            "session_id": new_session.id,
-            "goal_id": new_session.goal_id
-        }), 201
+        return jsonify(
+            {
+                "message": "Sessão iniciada com sucesso",
+                "session": serialize_session(new_session),
+            }
+        ), 201
 
 
 @bp_sessions.route("/pause", methods=["POST"])
