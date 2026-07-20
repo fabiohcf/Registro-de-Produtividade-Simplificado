@@ -160,6 +160,26 @@ def validate_goal_week(started_at, goal_obj):
 
     return None
 
+def validate_session_status(session_obj, expected_status):
+    """
+    Verifica se a sessão está no status esperado.
+    """
+
+    if session_obj.status != expected_status:
+        return (
+            jsonify(
+                {
+                    "error": (
+                        f"A sessão deve estar em "
+                        f"'{expected_status}'."
+                    )
+                }
+            ),
+            400,
+        )
+
+    return None
+
 # ==========================================================
 # Time helpers
 # ==========================================================

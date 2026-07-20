@@ -20,6 +20,7 @@ from app.routes.session_service import (
     validate_goal_week,
     calculate_duration_hours,
     serialize_session,
+    validate_session_status,
 )
 import os
 
@@ -132,35 +133,45 @@ def start_session():
 
 @bp_sessions.route("/pause", methods=["POST"])
 def pause_session():
-    data = request.json
-    if not data:
-        return jsonify({"error": "Dados JSON são obrigatórios"}), 400
+
+    data, error = get_request_data()
+    if error:
+        return error
 
     session_id = data.get("session_id")
+
     err = validate_positive_int(session_id, "ID da sessão")
     if err:
         return err
 
     with SessionLocal() as db:
-        session_obj = db.get(Session, session_id)
-        if not session_obj:
-            return jsonify({"error": "Sessão não encontrada"}), 404
-        if session_obj.finished_at:
-            return jsonify({"error": "Sessão já foi finalizada"}), 400
-        if not session_obj.started_at:
-            return jsonify({"error": "Sessão não foi iniciada corretamente"}), 400
 
-        session_obj.finished_at = datetime.now(timezone.utc)
-        session_obj.duration_hours = (session_obj.finished_at - session_obj.started_at).total_seconds() / 3600
+        session_obj, err = get_session(db, session_id)
+        if err:
+            return err
+
+        err = validate_session_status(session_obj, "running")
+        if err:
+            return err
+
+        session_obj.status = "paused"
+        session_obj.paused_at = datetime.now(timezone.utc)
+
         db.commit()
+        db.refresh(session_obj)
 
-        log_action(session_obj.user_id, session_obj.id, "pause")
+        log_action(
+            session_obj.user_id,
+            session_obj.id,
+            "pause",
+        )
 
-        return jsonify({
-            "message": "Sessão pausada",
-            "duration_hours": float(session_obj.duration_hours)
-        }), 200
-
+        return jsonify(
+            {
+                "message": "Sessão pausada com sucesso",
+                "session": serialize_session(session_obj),
+            }
+        ), 200
 
 @bp_sessions.route("/restart", methods=["POST"])
 def restart_session():

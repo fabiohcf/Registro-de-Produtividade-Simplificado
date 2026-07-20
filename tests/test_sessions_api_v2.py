@@ -2,7 +2,8 @@ from datetime import datetime, timezone
 import uuid
 import pytest
 from werkzeug.security import generate_password_hash
-
+from decimal import Decimal
+from app.models.session import Session
 from app.models.goal import Goal
 from app.models.user import User
 
@@ -253,7 +254,114 @@ def test_start_goal_from_other_week(
 # PAUSE
 # ======================================================
 
-# (vazio por enquanto)
+def test_pause_running_session(client, db_session, test_user):
+    """Deve pausar uma sessão em execução."""
+
+    session = Session(
+        user_id=test_user.id,
+        session_type="study",
+        status="running",
+        started_at=datetime.now(timezone.utc),
+        duration_hours=Decimal("0"),
+        paused_seconds=0,
+    )
+
+    db_session.add(session)
+    db_session.commit()
+
+    response = client.post(
+        "/api/sessions/pause",
+        json={"session_id": session.id},
+    )
+
+    assert response.status_code == 200
+
+    db_session.refresh(session)
+
+    assert session.status == "paused"
+    assert session.paused_at is not None
+
+
+def test_pause_already_paused_session(client, db_session, test_user):
+    """Não deve permitir pausar uma sessão já pausada."""
+
+    session = Session(
+        user_id=test_user.id,
+        session_type="study",
+        status="paused",
+        started_at=datetime.now(timezone.utc),
+        paused_at=datetime.now(timezone.utc),
+        duration_hours=Decimal("0"),
+        paused_seconds=0,
+    )
+
+    db_session.add(session)
+    db_session.commit()
+
+    response = client.post(
+        "/api/sessions/pause",
+        json={"session_id": session.id},
+    )
+
+    assert response.status_code == 400
+
+
+def test_pause_finished_session(client, db_session, test_user):
+    """Não deve permitir pausar sessão finalizada."""
+
+    now = datetime.now(timezone.utc)
+
+    session = Session(
+        user_id=test_user.id,
+        session_type="study",
+        status="finished",
+        started_at=now,
+        finished_at=now,
+        duration_hours=Decimal("1"),
+    )
+
+    db_session.add(session)
+    db_session.commit()
+
+    response = client.post(
+        "/api/sessions/pause",
+        json={"session_id": session.id},
+    )
+
+    assert response.status_code == 400
+
+
+def test_pause_cancelled_session(client, db_session, test_user):
+    """Não deve permitir pausar sessão cancelada."""
+
+    session = Session(
+        user_id=test_user.id,
+        session_type="study",
+        status="cancelled",
+        started_at=datetime.now(timezone.utc),
+        duration_hours=Decimal("0"),
+    )
+
+    db_session.add(session)
+    db_session.commit()
+
+    response = client.post(
+        "/api/sessions/pause",
+        json={"session_id": session.id},
+    )
+
+    assert response.status_code == 400
+
+
+def test_pause_nonexistent_session(client):
+    """Sessão inexistente deve retornar 404."""
+
+    response = client.post(
+        "/api/sessions/pause",
+        json={"session_id": 999999},
+    )
+
+    assert response.status_code == 404
 
 # ======================================================
 # RESUME
