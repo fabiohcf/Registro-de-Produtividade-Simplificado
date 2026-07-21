@@ -298,6 +298,62 @@ def finish_session():
         )
 
 
+@bp_sessions.route("/cancel", methods=["POST"])
+def cancel_session():
+    data, error = get_request_data()
+    if error:
+        return error
+
+    session_id = data.get("session_id")
+
+    err = validate_positive_int(
+        session_id,
+        "ID da sessão",
+    )
+    if err:
+        return err
+
+    with SessionLocal() as db:
+
+        session_obj, error = get_session(
+            db,
+            session_id,
+        )
+        if error:
+            return error
+
+        if session_obj.status == "finished":
+            return (
+                jsonify(
+                    {
+                        "error": (
+                            "Sessões finalizadas não podem ser canceladas."
+                        )
+                    }
+                ),
+                400,
+            )
+
+        user_id = session_obj.user_id
+
+        log_action(
+            user_id,
+            session_obj.id,
+            "cancel",
+        )
+
+        db.delete(session_obj)
+        db.commit()
+
+        return (
+            jsonify(
+                {
+                    "message": "Sessão cancelada com sucesso."
+                }
+            ),
+            200,
+        )
+
 
 
 @bp_sessions.route("/set_goal", methods=["POST"])
