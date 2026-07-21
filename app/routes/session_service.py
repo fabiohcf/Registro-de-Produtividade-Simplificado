@@ -180,6 +180,29 @@ def validate_session_status(session_obj, expected_status):
 
     return None
 
+def validate_finishable_session(session):
+    """
+    Valida se a sessão pode ser finalizada.
+
+    Apenas sessões em execução ou pausadas
+    podem ser finalizadas.
+    """
+
+    if session.status not in {"running", "paused"}:
+        return (
+            jsonify(
+                {
+                    "error": (
+                        "Somente sessões em execução "
+                        "ou pausadas podem ser finalizadas."
+                    )
+                }
+            ),
+            400,
+        )
+
+    return None
+
 # ==========================================================
 # Time helpers
 # ==========================================================

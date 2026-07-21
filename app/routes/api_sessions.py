@@ -21,6 +21,7 @@ from app.routes.session_service import (
     calculate_duration_hours,
     serialize_session,
     validate_session_status,
+    validate_finishable_session
 )
 import os
 
@@ -227,42 +228,74 @@ def resume_session():
 
 @bp_sessions.route("/finish", methods=["POST"])
 def finish_session():
-    data = request.json
-
-    if not data:
-        return jsonify({"error": "Dados JSON são obrigatórios"}), 400
+    data, error = get_request_data()
+    if error:
+        return error
 
     session_id = data.get("session_id")
-    if not session_id or not isinstance(session_id, int) or session_id <= 0:
-        return jsonify({"error": "ID da sessão é obrigatório e deve ser um inteiro positivo"}), 400
+
+    err = validate_positive_int(
+        session_id,
+        "ID da sessão",
+    )
+    if err:
+        return err
+
+    now = datetime.now(timezone.utc)
 
     with SessionLocal() as db:
-        session_obj = db.get(Session, session_id)
-        if not session_obj:
-            return jsonify({"error": "Sessão não encontrada"}), 404
 
-        if session_obj.finished_at is not None:
-            return jsonify({"error": "Sessão já foi finalizada"}), 400
-
-        if session_obj.started_at is None:
-            log_action(session_obj.user_id, session_obj.id, "finish_failed_no_start")
-            print(f"DEBUG: session_obj.started_at is None? {session_obj.started_at}") 
-            return jsonify({"error": "Sessão não foi iniciada corretamente"}), 400
-        else:
-            print(f"DEBUG: session_obj.started_at = {session_obj.started_at}")
-
-        session_obj.finished_at = datetime.now(timezone.utc)
-        session_obj.duration_hours = Decimal(
-            (session_obj.finished_at - session_obj.started_at).total_seconds() / 3600
+        session_obj, error = get_session(
+            db,
+            session_id,
         )
+        if error:
+            return error
+
+        err = validate_finishable_session(session_obj)
+        if err:
+            return err
+
+        # Caso esteja pausada,
+        # soma o último período pausado.
+        if session_obj.status == "paused":
+
+            session_obj.paused_seconds += int(
+                (now - session_obj.paused_at).total_seconds()
+            )
+
+            session_obj.paused_at = None
+
+        session_obj.finished_at = now
+
+        session_obj.status = "finished"
+
+        session_obj.duration_hours = (
+            calculate_duration_hours(
+                session_obj.started_at,
+                now,
+                session_obj.paused_seconds,
+            )
+        )
+
         db.commit()
+        db.refresh(session_obj)
 
-        log_action(session_obj.user_id, session_obj.id, "finish")
+        log_action(
+            session_obj.user_id,
+            session_obj.id,
+            "finish",
+        )
 
-        return jsonify({
-            "message": "Sessão finalizada com sucesso",
-            "duration_hours": float(session_obj.duration_hours)
-        }), 200
+        return (
+            jsonify(
+                {
+                    "message": "Sessão finalizada com sucesso.",
+                    "session": serialize_session(session_obj),
+                }
+            ),
+            200,
+        )
 
 
 
