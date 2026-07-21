@@ -173,30 +173,56 @@ def pause_session():
             }
         ), 200
 
-@bp_sessions.route("/restart", methods=["POST"])
-def restart_session():
-    data = request.json
-    if not data:
-        return jsonify({"error": "Dados JSON são obrigatórios"}), 400
+@bp_sessions.route("/resume", methods=["POST"])
+def resume_session():
+    data, error = get_request_data()
+    if error:
+        return error
 
     session_id = data.get("session_id")
+
     err = validate_positive_int(session_id, "ID da sessão")
     if err:
         return err
 
     with SessionLocal() as db:
-        session_obj = db.get(Session, session_id)
-        if not session_obj:
-            return jsonify({"error": "Sessão não encontrada"}), 404
 
-        session_obj.started_at = datetime.now(timezone.utc)
-        session_obj.finished_at = None
-        session_obj.duration_hours = 0
+        session_obj, error = get_session(db, session_id)
+        if error:
+            return error
+
+        err = validate_session_status(session_obj, "paused")
+        if err:
+            return err
+
+        now = datetime.now(timezone.utc)
+
+        paused_seconds = int(
+            (now - session_obj.paused_at).total_seconds()
+        )
+
+        session_obj.paused_seconds += paused_seconds
+        session_obj.paused_at = None
+        session_obj.status = "running"
+
         db.commit()
+        db.refresh(session_obj)
 
-        log_action(session_obj.user_id, session_obj.id, "restart")
+        log_action(
+            session_obj.user_id,
+            session_obj.id,
+            "resume",
+        )
 
-        return jsonify({"message": "Sessão reiniciada com sucesso"}), 200
+        return (
+            jsonify(
+                {
+                    "message": "Sessão retomada com sucesso.",
+                    "session": serialize_session(session_obj),
+                }
+            ),
+            200,
+        )
 
 
 @bp_sessions.route("/finish", methods=["POST"])

@@ -367,7 +367,113 @@ def test_pause_nonexistent_session(client):
 # RESUME
 # ======================================================
 
-# (vazio)
+def test_resume_paused_session(client, db_session, test_user):
+    """Deve retomar uma sessão pausada."""
+
+    paused_at = datetime.now(timezone.utc)
+
+    session = Session(
+        user_id=test_user.id,
+        session_type="study",
+        status="paused",
+        started_at=datetime.now(timezone.utc),
+        paused_at=paused_at,
+        paused_seconds=0,
+        duration_hours=Decimal("0"),
+    )
+
+    db_session.add(session)
+    db_session.commit()
+
+    response = client.post(
+        "/api/sessions/resume",
+        json={"session_id": session.id},
+    )
+
+    assert response.status_code == 200
+
+    db_session.refresh(session)
+
+    assert session.status == "running"
+    assert session.paused_at is None
+    assert session.paused_seconds >= 0
+
+def test_resume_running_session(client, db_session, test_user):
+    """Não deve retomar sessão já em execução."""
+
+    session = Session(
+        user_id=test_user.id,
+        session_type="study",
+        status="running",
+        started_at=datetime.now(timezone.utc),
+        paused_seconds=0,
+        duration_hours=Decimal("0"),
+    )
+
+    db_session.add(session)
+    db_session.commit()
+
+    response = client.post(
+        "/api/sessions/resume",
+        json={"session_id": session.id},
+    )
+
+    assert response.status_code == 400
+
+def test_resume_finished_session(client, db_session, test_user):
+    """Não deve retomar sessão finalizada."""
+
+    session = Session(
+        user_id=test_user.id,
+        session_type="study",
+        status="finished",
+        started_at=datetime.now(timezone.utc),
+        finished_at=datetime.now(timezone.utc),
+        duration_hours=Decimal("1"),
+    )
+
+    db_session.add(session)
+    db_session.commit()
+
+    response = client.post(
+        "/api/sessions/resume",
+        json={"session_id": session.id},
+    )
+
+    assert response.status_code == 400
+
+def test_resume_cancelled_session(client, db_session, test_user):
+    """Não deve retomar sessão cancelada."""
+
+    session = Session(
+        user_id=test_user.id,
+        session_type="study",
+        status="cancelled",
+        started_at=datetime.now(timezone.utc),
+        duration_hours=Decimal("0"),
+    )
+
+    db_session.add(session)
+    db_session.commit()
+
+    response = client.post(
+        "/api/sessions/resume",
+        json={"session_id": session.id},
+    )
+
+    assert response.status_code == 400
+
+def test_resume_nonexistent_session(client):
+    """Não deve retomar sessão inexistente."""
+
+    response = client.post(
+        "/api/sessions/resume",
+        json={"session_id": 999999},
+    )
+
+    assert response.status_code == 404
+
+
 
 # ======================================================
 # FINISH
