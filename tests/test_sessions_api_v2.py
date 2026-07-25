@@ -4,7 +4,6 @@ import pytest
 from werkzeug.security import generate_password_hash
 from decimal import Decimal
 from app.models.session import Session
-from app.models.goal import Goal
 from app.models.user import User
 
 
@@ -29,25 +28,6 @@ def test_user(db_session):
 
     return user
 
-
-@pytest.fixture
-def weekly_goal(db_session, test_user):
-    """Cria uma meta semanal válida para a semana atual."""
-
-    year, week, _ = datetime.now(timezone.utc).isocalendar()
-
-    goal = Goal(
-        user_id=test_user.id,
-        year=year,
-        week_number=week,
-        target_hours=10,
-        target_questions=300,
-    )
-
-    db_session.add(goal)
-    db_session.commit()
-
-    return goal
 
 
 # ==========================================================
@@ -74,9 +54,7 @@ def test_start_session_success(client, test_user):
 
     assert session["status"] == "running"
     assert session["session_type"] == "study"
-    assert session["goal_id"] is None
-    assert session["questions_total"] is None
-    assert session["questions_correct"] is None
+    assert session["user_id"] == test_user.id
 
 
 def test_start_session_with_description(client, test_user):
@@ -96,23 +74,6 @@ def test_start_session_with_description(client, test_user):
 
     assert session["description"] == "Revisão de Direito Constitucional"
 
-
-def test_start_session_with_goal(client, test_user, weekly_goal):
-
-    response = client.post(
-        "/api/sessions/start",
-        json={
-            "user_id": test_user.id,
-            "session_type": "questions",
-            "goal_id": weekly_goal.id,
-        },
-    )
-
-    assert response.status_code == 201
-
-    session = response.get_json()["session"]
-
-    assert session["goal_id"] == weekly_goal.id
 
 
 def test_start_invalid_session_type(client, test_user):
@@ -164,91 +125,62 @@ def test_start_when_active_session_exists(client, test_user):
     assert response.status_code == 400
 
 
-def test_start_invalid_goal(client, test_user):
+def test_start_session_without_goal(client, test_user):
+    """
+    Sessão deve ser criada normalmente sem meta semanal definida.
+    """
 
     response = client.post(
         "/api/sessions/start",
         json={
             "user_id": test_user.id,
             "session_type": "study",
-            "goal_id": 999999,
         },
     )
 
-    assert response.status_code == 404
+    assert response.status_code == 201
 
+    session = response.get_json()["session"]
 
-def test_start_goal_from_other_user(
-    client,
-    db_session,
-    test_user,
-):
+    assert session["user_id"] == test_user.id
+    assert session["status"] == "running"
+    assert "goal_id" not in session
 
-    other = User(
-        username="other-user",
-        email="other@test.com",
-        password_hash=generate_password_hash("123456"),
-    )
-
-    db_session.add(other)
-    db_session.commit()
-
-    year, week, _ = datetime.now(timezone.utc).isocalendar()
-
-    goal = Goal(
-        user_id=other.id,
-        year=year,
-        week_number=week,
-        target_hours=5,
-    )
-
-    db_session.add(goal)
-    db_session.commit()
+def test_start_session_ignores_goal_id(client, test_user):
+    """
+    Sessões não possuem mais relacionamento com metas.
+    """
 
     response = client.post(
         "/api/sessions/start",
         json={
             "user_id": test_user.id,
-            "goal_id": goal.id,
             "session_type": "study",
+            "goal_id": 123,
         },
     )
 
-    assert response.status_code == 400
+    assert response.status_code == 201
+
+    session = response.get_json()["session"]
+
+    assert "goal_id" not in session
 
 
-def test_start_goal_from_other_week(
-    client,
-    db_session,
-    test_user,
-):
-
-    year, week, _ = datetime.now(timezone.utc).isocalendar()
-
-    other_week = week + 1 if week < 52 else week - 1
-
-    goal = Goal(
-        user_id=test_user.id,
-        year=year,
-        week_number=other_week,
-        target_hours=5,
-    )
-
-    db_session.add(goal)
-    db_session.commit()
+def test_start_session_without_weekly_goal(client, test_user):
+    """
+    Usuário pode iniciar sessão sem definir meta semanal.
+    """
 
     response = client.post(
         "/api/sessions/start",
         json={
             "user_id": test_user.id,
-            "goal_id": goal.id,
-            "session_type": "study",
+            "session_type": "revision",
         },
     )
 
-    assert response.status_code == 400
-
-
+    assert response.status_code == 201
 
 # ======================================================
 # PAUSE
@@ -531,6 +463,37 @@ def test_finish_nonexistent_session(client):
     )
 
     assert response.status_code == 404
+
+
+def test_finish_session_without_goal(client, db_session, test_user):
+    """
+    Sessão pode ser finalizada mesmo sem meta semanal.
+    """
+
+    session = Session(
+        user_id=test_user.id,
+        session_type="study",
+        status="running",
+        started_at=datetime.now(timezone.utc),
+        duration_hours=Decimal("0"),
+        paused_seconds=0,
+    )
+
+    db_session.add(session)
+    db_session.commit()
+
+    response = client.post(
+        "/api/sessions/finish",
+        json={
+            "session_id": session.id,
+        },
+    )
+
+    assert response.status_code == 200
+
+    db_session.refresh(session)
+
+    assert session.status == "finished"
 
 # ======================================================
 # CANCEL

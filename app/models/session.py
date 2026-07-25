@@ -1,32 +1,112 @@
 # app/models/session.py
 
-from sqlalchemy import Column, Integer, ForeignKey, DateTime, Numeric, String
+from sqlalchemy import (
+    Column,
+    Integer,
+    ForeignKey,
+    DateTime,
+    Numeric,
+    String,
+    CheckConstraint,
+)
 from sqlalchemy.orm import relationship
+
 from app.database import Base
 
 
 class Session(Base):
     __tablename__ = "sessions"
 
-    id = Column(Integer, primary_key=True, index=True)
+    __table_args__ = (
+        CheckConstraint(
+            "paused_seconds >= 0",
+            name="ck_session_paused_seconds",
+        ),
+        CheckConstraint(
+            "questions_total IS NULL OR questions_total >= 0",
+            name="ck_session_questions_total",
+        ),
+        CheckConstraint(
+            "questions_correct IS NULL OR questions_correct >= 0",
+            name="ck_session_questions_correct",
+        ),
+        CheckConstraint(
+            "duration_hours >= 0",
+            name="ck_session_duration_hours",
+        ),
+    )
 
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True,
+    )
 
-    duration_hours = Column(Numeric(10, 4), nullable=False, default=0.0)
+    user_id = Column(
+        Integer,
+        ForeignKey(
+            "users.id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    )
 
-    started_at = Column(DateTime(timezone=True), nullable=True)
-    finished_at = Column(DateTime(timezone=True), nullable=True)
+    duration_hours = Column(
+        Numeric(10, 4),
+        nullable=False,
+        default=0,
+    )
 
-    # V2 fields
-    status = Column(String(20), nullable=False, default="running")
+    started_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
-    session_type = Column(String(20), nullable=False)
-    description = Column(String(255), nullable=True)
+    finished_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
-    paused_seconds = Column(Integer, nullable=False, default=0)
-    paused_at = Column(DateTime(timezone=True), nullable=True)
+    # Status da sessão
+    status = Column(
+        String(20),
+        nullable=False,
+        default="running",
+    )
 
-    questions_total = Column(Integer, nullable=True)
-    questions_correct = Column(Integer, nullable=True)
+    # study, revision, questions, essay, mock_exam
+    session_type = Column(
+        String(20),
+        nullable=False,
+    )
 
-    user = relationship("User", back_populates="sessions")
+    description = Column(
+        String(255),
+        nullable=True,
+    )
+
+    paused_seconds = Column(
+        Integer,
+        nullable=False,
+        default=0,
+    )
+
+    paused_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    questions_total = Column(
+        Integer,
+        nullable=True,
+    )
+
+    questions_correct = Column(
+        Integer,
+        nullable=True,
+    )
+
+    user = relationship(
+        "User",
+        back_populates="sessions",
+    )
