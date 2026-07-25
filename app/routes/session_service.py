@@ -128,38 +128,6 @@ def get_active_session(db, user_id):
 # Business validations
 # ==========================================================
 
-def validate_goal_week(started_at, goal_obj):
-    """
-    Garante que a meta pertence à mesma semana ISO da data de início da sessão.
-    """
-
-    if started_at is None:
-        return (
-            jsonify(
-                {"error": "Data de início da sessão não informada"}
-            ),
-            400,
-        )
-
-    year, week_number, _ = started_at.isocalendar()
-
-    if (
-        goal_obj.year != year
-        or goal_obj.week_number != week_number
-    ):
-        return (
-            jsonify(
-                {
-                    "error": (
-                        "A meta deve pertencer à mesma semana da sessão."
-                    )
-                }
-            ),
-            400,
-        )
-
-    return None
-
 def validate_session_status(session_obj, expected_status):
     """
     Verifica se a sessão está no status esperado.
@@ -240,7 +208,6 @@ def serialize_session(session):
     return {
         "id": session.id,
         "user_id": session.user_id,
-        "goal_id": session.goal_id,
 
         "status": session.status,
 

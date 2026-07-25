@@ -11,7 +11,6 @@ class Session(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
-    goal_id = Column(Integer, ForeignKey("goals.id", ondelete="SET NULL"))
 
     duration_hours = Column(Numeric(10, 4), nullable=False, default=0.0)
 
@@ -31,4 +30,3 @@ class Session(Base):
     questions_correct = Column(Integer, nullable=True)
 
     user = relationship("User", back_populates="sessions")
-    goal = relationship("Goal", back_populates="sessions")

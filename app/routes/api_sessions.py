@@ -39,18 +39,12 @@ def start_session():
         return error
 
     user_id = data.get("user_id")
-    goal_id = data.get("goal_id")
     session_type = data.get("session_type")
     description = data.get("description")
 
     err = validate_positive_int(user_id, "ID do usuário")
     if err:
         return err
-
-    if goal_id is not None:
-        err = validate_positive_int(goal_id, "ID da meta")
-        if err:
-            return err
 
     err = validate_session_type(session_type)
     if err:
@@ -74,28 +68,9 @@ def start_session():
                 {"error": "Usuário já possui uma sessão ativa"}
             ), 400
 
-        goal_obj = None
-
-        if goal_id is not None:
-
-            goal_obj = db.get(Goal, goal_id)
-
-            if goal_obj is None:
-                return jsonify({"error": "Meta não encontrada"}), 404
-
-            if goal_obj.user_id != user_id:
-                return jsonify(
-                    {"error": "Meta não pertence ao usuário"}
-                ), 400
-
-            err = validate_goal_week(now, goal_obj)
-            if err:
-                return err
 
         new_session = Session(
             user_id=user_id,
-
-            goal_id=goal_obj.id if goal_obj else None,
 
             session_type=session_type,
             description=description,
@@ -354,42 +329,6 @@ def cancel_session():
             200,
         )
 
-
-
-@bp_sessions.route("/set_goal", methods=["POST"])
-def set_session_goal():
-    data = request.json
-    if not data:
-        return jsonify({"error": "Dados JSON são obrigatórios"}), 400
-
-    session_id = data.get("session_id")
-    goal_id = data.get("goal_id")
-
-    err1 = validate_positive_int(session_id, "ID da sessão")
-    err2 = validate_positive_int(goal_id, "ID da meta")
-    if err1:
-        return err1
-    if err2:
-        return err2
-
-    with SessionLocal() as db:
-        session_obj = db.get(Session, session_id)
-        if not session_obj:
-            return jsonify({"error": "Sessão não encontrada"}), 404
-
-        goal_obj = db.get(Goal, goal_id)
-        if not goal_obj:
-            return jsonify({"error": "Meta não encontrada"}), 404
-
-        if goal_obj.user_id != session_obj.user_id:
-            return jsonify({"error": "Meta não pertence ao mesmo usuário da sessão"}), 400
-
-        session_obj.goal_id = goal_id
-        db.commit()
-
-        log_action(session_obj.user_id, session_obj.id, "set_goal")
-
-        return jsonify({"message": "Meta associada à sessão com sucesso"}), 200
 
 
 @bp_sessions.route("/list", methods=["GET"])
