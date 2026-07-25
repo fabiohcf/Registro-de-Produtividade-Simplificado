@@ -17,7 +17,6 @@ from app.routes.session_service import (
     validate_session_type,
     get_session,
     get_active_session,
-    validate_goal_week,
     calculate_duration_hours,
     serialize_session,
     validate_session_status,
