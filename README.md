@@ -1,239 +1,468 @@
-# Registro de Produtividade - Projeto Pessoal
+# Registro de Produtividade
 
-Este é um **projeto pessoal** que evoluiu de uma atividade acadêmica inicial. A versão original (simplificada) foi desenvolvida como parte da disciplina Imersão Profissional do curso de Análise e Desenvolvimento de Sistemas (UNIASSELVI). 
+Aplicação web para gerenciamento de produtividade pessoal, permitindo registrar sessões de estudo, acompanhar metas semanais e analisar evolução de desempenho.
 
-Esta versão expandida representa uma **evolução profissional** do conceito original, transformando um projeto acadêmico básico em uma aplicação robusta e escalável, pronta para uso em produção com múltiplos usuários.
+Este projeto iniciou como uma atividade acadêmica do curso de **Análise e Desenvolvimento de Sistemas (UNIASSELVI)** e evoluiu para uma aplicação pessoal com arquitetura profissional, API REST, autenticação segura, persistência em banco relacional e suíte de testes automatizados.
 
-## 🚀 Funcionalidades Principais
+O objetivo principal é transformar o acompanhamento de produtividade em dados estruturados, permitindo ao usuário controlar tempo dedicado, metas semanais e histórico de desempenho.
 
-- **Gestão de Usuários**: Cadastro, autenticação e gerenciamento de usuários
-- **Metas de Produtividade**: Definição de metas semanais de horas de estudo/trabalho
-- **Sessões de Trabalho**: Controle de início, pausa, reinício e finalização de sessões
-- **Autenticação Segura**: Sistema JWT com cookies seguros e CSRF protection
-- **API REST**: Endpoints padronizados para integração frontend/mobile
-- **Validações Robustas**: Validação completa de dados com mensagens em português
-- **Testes Automatizados**: Cobertura completa de testes unitários e de integração
+---
 
-## 🛠 Tecnologias Utilizadas
+# 🚀 Funcionalidades
 
-### Backend
-- **Python 3.12**
-- **Flask** (framework web)
-- **SQLAlchemy** (ORM)
-- **Flask-JWT-Extended** (autenticação)
-- **Alembic** (migrações de banco)
-- **Pytest** (testes)
+## 👤 Gestão de usuários
 
-### Banco de Dados
-- **PostgreSQL** (produção)
-- **SQLite** (testes e desenvolvimento local)
+- Cadastro de usuários
+- Consulta e gerenciamento de usuários
+- Autenticação utilizando JWT
+- Controle seguro de credenciais
 
-### Infraestrutura
-- **Render** (deploy em produção)
-- **Git** (controle de versão)
+---
 
-## 📁 Estrutura do Projeto
+## 🎯 Metas semanais
+
+Sistema de metas baseado em semanas do calendário.
+
+Cada usuário pode possuir uma meta semanal contendo:
+
+- Ano (`year`)
+- Número da semana (`week_number`)
+- Meta de horas (`target_hours`)
+- Meta de questões (`target_questions`)
+
+Regras implementadas:
+
+- Apenas uma meta por usuário em cada semana
+- Validação de dados obrigatórios
+- Atualização de metas existentes
+- Remoção automática quando os objetivos são zerados
+
+---
+
+## ⏱️ Sessões de produtividade (Backend V2)
+
+O módulo de sessões foi totalmente reformulado utilizando uma abordagem baseada em estados.
+
+Estados disponíveis:
 
 ```
+running
+paused
+finished
+cancelled
+```
+
+Fluxo permitido:
+
+```
+START
+  |
+  v
+RUNNING
+  |
+  v
+PAUSE
+  |
+  v
+PAUSED
+  |
+  v
+RESUME
+  |
+  v
+RUNNING
+  |
+  v
+FINISH
+  |
+  v
+FINISHED
+```
+
+Funcionalidades:
+
+- Início de sessão
+- Pausa temporária
+- Retomada da sessão
+- Finalização
+- Cancelamento
+- Controle de tempo líquido
+- Associação com metas semanais
+- Validação de sessões duplicadas ou inválidas
+
+O cálculo de produtividade considera:
+
+```
+Tempo líquido =
+Tempo total da sessão - períodos pausados
+```
+
+---
+
+# 🏗️ Arquitetura
+
+O projeto utiliza uma arquitetura modular baseada em:
+
+- App Factory Pattern
+- Flask Blueprints
+- Service Layer
+- ORM com SQLAlchemy
+- Separação entre rotas, regras de negócio e modelos
+
+Estrutura:
+
+```
+Request
+   |
+   v
+Blueprints (Routes)
+   |
+   v
+Services
+   |
+   v
+SQLAlchemy Models
+   |
+   v
+Database
+```
+
+---
+
+# 🛠️ Tecnologias utilizadas
+
+## Backend
+
+- Python 3.12
+- Flask
+- SQLAlchemy ORM
+- Flask-JWT-Extended
+- Alembic
+- Pytest
+- Werkzeug Security
+
+---
+
+## Banco de dados
+
+Produção:
+
+- PostgreSQL
+
+Desenvolvimento/Testes:
+
+- SQLite
+
+---
+
+## Controle de versão
+
+- Git
+- GitHub
+
+---
+
+# 📁 Estrutura do projeto
+
+```
+.
 ├── app/
-│   ├── __init__.py              # App factory e configuração JWT
-│   ├── database.py              # Configuração de banco de dados
-│   ├── models/                  # Modelos SQLAlchemy
+│   ├── models/
 │   │   ├── user.py
 │   │   ├── goal.py
 │   │   └── session.py
-│   ├── routes/                  # Blueprints da API
+│   │
+│   ├── routes/
+│   │   ├── api_auth.py
 │   │   ├── api_users.py
 │   │   ├── api_goals.py
 │   │   ├── api_sessions.py
-│   │   ├── api_auth.py
-│   │   └── main.py
-│   ├── templates/               # Templates HTML
-│   │   ├── base.html
-│   │   ├── index.html
-│   │   ├── login.html
-│   │   ├── meta.html
-│   │   └── relatorio.html
-│   └── static/                  # Arquivos estáticos
-│       ├── css/
-│       ├── js/
-│       └── img/
-├── tests/                       # Testes automatizados
+│   │   ├── goal_service.py
+│   │   └── session_service.py
+│   │
+│   ├── database.py
+│   └── __init__.py
+│
+├── tests/
 │   ├── test_users.py
 │   ├── test_goals.py
 │   ├── test_sessions.py
+│   ├── test_sessions_api.py
 │   ├── test_auth.py
 │   └── test_validations.py
-├── alembic/                     # Migrações de banco
-├── app.py                       # Ponto de entrada
-├── requirements.txt             # Dependências de produção
-├── requirements-dev.txt         # Dependências de desenvolvimento
-└── .env.example                 # Exemplo de variáveis de ambiente
+│
+├── alembic/
+│   └── versions/
+│
+├── requirements.txt
+├── requirements-dev.txt
+├── app.py
+└── README.md
 ```
 
-## 🔧 Configuração e Instalação
+---
 
-### Pré-requisitos
+# 🔐 Segurança
+
+Implementações atuais:
+
+- Autenticação JWT
+- Cookies seguros para tokens
+- Hash de senhas utilizando Werkzeug
+- Validação de dados de entrada
+- Controle de permissões entre usuários
+- Configuração por variáveis de ambiente
+
+---
+
+# 🌐 API REST
+
+## Autenticação
+
+| Método | Endpoint | Descrição |
+|-|-|-|
+| POST | `/auth/login` | Login |
+| POST | `/auth/refresh` | Renovação de token |
+
+---
+
+## Usuários
+
+| Método | Endpoint | Descrição |
+|-|-|-|
+| GET | `/api/users/` | Listar usuários |
+| POST | `/api/users/` | Criar usuário |
+| GET | `/api/users/{id}` | Buscar usuário |
+| PUT | `/api/users/{id}` | Atualizar usuário |
+| DELETE | `/api/users/{id}` | Remover usuário |
+
+---
+
+## Metas
+
+| Método | Endpoint | Descrição |
+|-|-|-|
+| GET | `/api/goals/` | Listar metas semanais |
+| POST | `/api/goals/` | Criar meta semanal |
+| PUT | `/api/goals/{id}` | Atualizar meta semanal |
+
+---
+
+## Sessões
+
+| Método | Endpoint | Descrição |
+|-|-|-|
+| POST | `/api/sessions/start` | Iniciar sessão |
+| POST | `/api/sessions/pause` | Pausar sessão |
+| POST | `/api/sessions/resume` | Retomar sessão |
+| POST | `/api/sessions/finish` | Finalizar sessão |
+| POST | `/api/sessions/cancel` | Cancelar sessão |
+| GET | `/api/sessions/list` | Listar sessões |
+
+---
+
+# 🧪 Testes automatizados
+
+O projeto utiliza Pytest para garantir a estabilidade das regras de negócio.
+
+Cobertura atual:
+
+```
+63 testes passando
+```
+
+Cenários testados:
+
+- Cadastro de usuários
+- Autenticação
+- Validações
+- CRUD de metas semanais
+- Fluxo completo de sessões
+- Estados inválidos de sessões
+- Regras de negócio
+- Integração entre API e banco de dados
+
+Executar testes:
+
+```bash
+pytest
+```
+
+Modo detalhado:
+
+```bash
+pytest -v
+```
+
+Teste específico:
+
+```bash
+pytest tests/test_sessions_api.py
+```
+
+---
+
+# ⚙️ Configuração local
+
+## Pré-requisitos
+
 - Python 3.12+
-- PostgreSQL (para produção)
+- PostgreSQL (produção)
 - Git
 
-### 1. Clone o repositório
+---
+
+## Clone
+
 ```bash
 git clone https://github.com/fabiohcf/Registro-de-Produtividade.git
+
 cd Registro-de-Produtividade
 ```
 
-### 2. Crie um ambiente virtual
+---
+
+## Ambiente virtual
+
+Linux/macOS:
+
 ```bash
-python -m venv venv
-source venv/bin/activate  # Linux/macOS
-# ou
-venv\Scripts\activate     # Windows
+python -m venv .venv
+
+source .venv/bin/activate
 ```
 
-### 3. Instale as dependências
+Windows:
+
+```bash
+.venv\Scripts\activate
+```
+
+---
+
+## Dependências
+
+Produção:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Configure as variáveis de ambiente
-Crie um arquivo `.env` na raiz do projeto:
-```bash
-# Chave secreta para JWT (obrigatória)
-JWT_SECRET_KEY=sua-chave-secreta-forte-aqui
+Desenvolvimento:
 
-# URL do banco de dados (obrigatória para produção)
+```bash
+pip install -r requirements-dev.txt
+```
+
+---
+
+## Variáveis de ambiente
+
+Criar arquivo:
+
+```
+.env
+```
+
+Exemplo:
+
+```env
+JWT_SECRET_KEY=sua-chave-secreta
+
 DATABASE_URL=postgresql+psycopg2://usuario:senha@localhost:5432/registro_prod
 ```
 
-### 5. Configure o banco de dados
+---
 
-#### Para desenvolvimento (SQLite):
+# Banco de dados
+
+Executar migrações:
+
 ```bash
-python app.py  # Cria automaticamente o banco SQLite
-```
-
-#### Para produção (PostgreSQL):
-```bash
-# Crie o banco no PostgreSQL
-createdb registro_prod
-
-# Execute as migrações
 alembic upgrade head
 ```
 
-### 6. Execute a aplicação
+Criar estrutura inicial:
+
 ```bash
 python app.py
 ```
 
-A aplicação estará disponível em: http://127.0.0.1:5000
+---
 
-## 🧪 Executando Testes
+# Executando aplicação
 
 ```bash
-# Execute todos os testes
-pytest
-
-# Execute com verbose
-pytest -v
-
-# Execute testes específicos
-pytest tests/test_users.py
+python app.py
 ```
 
-## 📚 API Endpoints
+Aplicação disponível em:
 
-### Autenticação
-- `POST /auth/login` - Login de usuário
-- `POST /auth/refresh` - Renovar token de acesso
-- `POST /auth/logout` - Logout (limpa cookies)
-
-### Usuários
-- `GET /api/users/` - Listar usuários
-- `POST /api/users/` - Criar usuário
-- `GET /api/users/{id}` - Buscar usuário por ID
-- `PUT /api/users/{id}` - Atualizar usuário
-- `DELETE /api/users/{id}` - Deletar usuário
-
-### Metas
-- `GET /api/goals/` - Listar metas
-- `POST /api/goals/` - Criar meta
-
-### Sessões
-- `POST /api/sessions/start` - Iniciar sessão
-- `POST /api/sessions/pause` - Pausar sessão
-- `POST /api/sessions/restart` - Reiniciar sessão
-- `POST /api/sessions/finish` - Finalizar sessão
-
-## 🔒 Segurança
-
-- **Autenticação JWT** com cookies seguros
-- **CSRF Protection** ativado em produção
-- **Validação de dados** robusta com mensagens em português
-- **Hash de senhas** com Werkzeug
-- **Variáveis de ambiente** para configurações sensíveis
-
-## 🌐 Deploy em Produção
-
-### Render (recomendado)
-1. Conecte seu repositório ao Render
-2. Configure as variáveis de ambiente:
-   - `JWT_SECRET_KEY`
-   - `DATABASE_URL` (PostgreSQL)
-3. O deploy será automático a cada push
-
-### Variáveis de ambiente necessárias:
-```bash
-JWT_SECRET_KEY=sua-chave-secreta-forte
-DATABASE_URL=postgresql+psycopg2://user:pass@host:5432/dbname
 ```
-
-## 🏗 Arquitetura
-
-- **App Factory Pattern**: Criação flexível da aplicação
-- **Blueprint Organization**: Separação modular de rotas
-- **ORM com SQLAlchemy**: Mapeamento objeto-relacional
-- **Test-Driven Development**: Desenvolvimento orientado a testes
-- **Separation of Concerns**: Separação clara de responsabilidades
-
-## 📈 Evolução Profissional - Melhorias Implementadas
-
-### 🔄 **Transformação de Projeto Acadêmico para Profissional**
-- **Base acadêmica**: Versão simplificada com SQLite local e interface básica
-- **Evolução pessoal**: Arquitetura robusta com APIs REST e autenticação segura
-
-### ✅ **Implementações Técnicas Avançadas**
-- **Autenticação JWT** com cookies seguros e CSRF protection
-- **Validações robustas** em todos os endpoints com mensagens em português
-- **Testes automatizados** com alta cobertura (30+ testes)
-- **Suporte a PostgreSQL** para produção com Alembic migrations
-- **API REST** padronizada e documentada
-- **Estrutura modular** com Blueprints e App Factory pattern
-- **Padronização de código** com Black e boas práticas
-- **Configuração flexível** para diferentes ambientes (dev/prod/test)
-
-## 📄 Licença
-
-Uso educacional para fins de demonstração acadêmica.
-
-## 👨‍💻 Autor
-
-**Fábio Henrique Costa Ferreira**  
-Desenvolvedor Full Stack | Estudante de Análise e Desenvolvimento de Sistemas - UNIASSELVI
-
-### 🎯 **Objetivo do Projeto**
-Este projeto pessoal demonstra a **capacidade de evolução técnica** e **aprendizado contínuo**, transformando um conceito acadêmico simples em uma aplicação profissional completa. Representa habilidades em:
-
-- **Desenvolvimento Full Stack** com Python/Flask
-- **Arquitetura de APIs REST** modernas
-- **Autenticação e segurança** (JWT, CSRF, validações)
-- **Banco de dados relacionais** (PostgreSQL, SQLAlchemy, Alembic)
-- **Testes automatizados** e TDD
-- **Deploy em nuvem** e DevOps básico
-- **Padrões de código** e boas práticas
+http://127.0.0.1:5000
+```
 
 ---
 
-**Nota**: Este repositório evoluiu de uma atividade acadêmica para um projeto pessoal profissional, demonstrando capacidade de crescimento técnico e aplicação de conceitos avançados de desenvolvimento de software.
+# 📈 Evolução do projeto
+
+## Versão inicial
+
+Projeto acadêmico simples:
+
+- Registro básico de produtividade
+- SQLite local
+- Estrutura monolítica inicial
+
+---
+
+## Backend V2
+
+Principais melhorias:
+
+- Migração para arquitetura modular
+- PostgreSQL preparado para produção
+- Alembic para versionamento de banco
+- API REST estruturada
+- Autenticação JWT
+- Metas semanais
+- Máquina de estados para sessões
+- Camada de serviços
+- Testes automatizados
+
+---
+
+# 🔮 Próximos passos
+
+Planejamento futuro:
+
+- Integração com frontend React + TypeScript
+- Dashboard de produtividade
+- Gráficos de evolução
+- Relatórios personalizados
+- Deploy completo em nuvem
+- Documentação OpenAPI/Swagger
+
+---
+
+# 👨‍💻 Autor
+
+**Fábio Henrique Costa Ferreira**
+
+Desenvolvedor Backend | em formação
+
+Estudante de Análise e Desenvolvimento de Sistemas
+
+Interesses:
+
+- Desenvolvimento Backend
+- Arquitetura de software
+- APIs REST
+- Banco de dados
+- Cloud e DevOps
+
+---
+
+# 📄 Licença
+
+Projeto desenvolvido para fins educacionais, portfólio e evolução profissional.
