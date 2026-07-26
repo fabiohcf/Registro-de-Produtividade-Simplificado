@@ -1,137 +1,612 @@
-# tests/test_sessions_api.py
-from decimal import Decimal
+#app/tests/test_sessions_api_v2.py
+
+from datetime import datetime, timezone
 import uuid
 import pytest
-from datetime import datetime, timezone
-from app.models.user import User
-from app.models.session import Session
-from app.models.goal import Goal
 from werkzeug.security import generate_password_hash
+from decimal import Decimal
+from app.models.session import Session
+from app.models.user import User
 
+
+# ==========================================================
+# Fixtures
+# ==========================================================
 
 @pytest.fixture
 def test_user(db_session):
-    """Cria um usuário de teste"""
+    """Cria um usuário de teste."""
+
+    unique = uuid.uuid4().hex
+
     user = User(
-        username="API User",
-        email=f"{uuid.uuid4()}@example.com",
-        password_hash=generate_password_hash("123456")
+        username=f"api-user-{unique}",
+        email=f"{unique}@test.com",
+        password_hash=generate_password_hash("123456"),
     )
+
     db_session.add(user)
     db_session.commit()
+
     return user
 
 
-@pytest.fixture
-def test_goal(db_session, test_user):
-    """Cria uma meta de teste"""
-    goal = Goal(
-        user_id=test_user.id,
-        category="Meta de teste",
-        description="Descrição da meta",
-        target_hours=5
+
+# ==========================================================
+# START SESSION
+# ==========================================================
+
+def test_start_session_success(client, test_user):
+
+    response = client.post(
+        "/api/sessions/start",
+        json={
+            "user_id": test_user.id,
+            "session_type": "study",
+        },
     )
-    db_session.add(goal)
-    db_session.commit()
-    return goal
+
+    assert response.status_code == 201
+
+    body = response.get_json()
+
+    assert body["message"] == "Sessão iniciada com sucesso"
+
+    session = body["session"]
+
+    assert session["status"] == "running"
+    assert session["session_type"] == "study"
+    assert session["user_id"] == test_user.id
 
 
-def test_start_pause_restart_finish_session(client, db_session, test_user, test_goal):
-    """Testa fluxo completo de sessão via API"""
-    resp = client.post("/api/sessions/start", json={"user_id": test_user.id})
-    assert resp.status_code == 201
-    session_id = resp.get_json()["session_id"]
+def test_start_session_with_description(client, test_user):
 
-    resp = client.post("/api/sessions/pause", json={"session_id": session_id})
-    assert resp.status_code == 200
-    duration1 = Decimal(str(resp.get_json()["duration_hours"]))
-    assert duration1 >= Decimal("0.0000")
+    response = client.post(
+        "/api/sessions/start",
+        json={
+            "user_id": test_user.id,
+            "session_type": "revision",
+            "description": " Revisão de Direito Constitucional ",
+        },
+    )
 
-    resp = client.post("/api/sessions/restart", json={"session_id": session_id})
-    assert resp.status_code == 200
+    assert response.status_code == 201
 
-    resp = client.post("/api/sessions/finish", json={"session_id": session_id})
-    assert resp.status_code == 200
-    duration2 = Decimal(str(resp.get_json()["duration_hours"]))
-    assert duration2 >= Decimal("0.0000")
+    session = response.get_json()["session"]
+
+    assert session["description"] == "Revisão de Direito Constitucional"
 
 
-def test_start_session_with_goal(client, db_session, test_user, test_goal):
-    """Inicia sessão já associada a uma meta"""
-    resp = client.post("/api/sessions/start", json={
-        "user_id": test_user.id,
-        "goal_id": test_goal.id
-    })
-    assert resp.status_code == 201
-    data = resp.get_json()
-    assert data["goal_id"] == test_goal.id
+
+def test_start_invalid_session_type(client, test_user):
+
+    response = client.post(
+        "/api/sessions/start",
+        json={
+            "user_id": test_user.id,
+            "session_type": "invalid_type",
+        },
+    )
+
+    assert response.status_code == 400
 
 
-def test_set_session_goal(client, db_session, test_user, test_goal):
-    """Associa meta a uma sessão existente"""
+def test_start_invalid_user(client):
+
+    response = client.post(
+        "/api/sessions/start",
+        json={
+            "user_id": 999999,
+            "session_type": "study",
+        },
+    )
+
+    assert response.status_code == 404
+
+
+def test_start_when_active_session_exists(client, test_user):
+
+    response = client.post(
+        "/api/sessions/start",
+        json={
+            "user_id": test_user.id,
+            "session_type": "study",
+        },
+    )
+
+    assert response.status_code == 201
+
+    response = client.post(
+        "/api/sessions/start",
+        json={
+            "user_id": test_user.id,
+            "session_type": "revision",
+        },
+    )
+
+    assert response.status_code == 400
+
+
+def test_start_session_without_goal(client, test_user):
+    """
+    Sessão deve ser criada normalmente sem meta semanal definida.
+    """
+
+    response = client.post(
+        "/api/sessions/start",
+        json={
+            "user_id": test_user.id,
+            "session_type": "study",
+        },
+    )
+
+    assert response.status_code == 201
+
+    session = response.get_json()["session"]
+
+    assert session["user_id"] == test_user.id
+    assert session["status"] == "running"
+    assert "goal_id" not in session
+
+def test_start_session_ignores_goal_id(client, test_user):
+    """
+    Sessões não possuem mais relacionamento com metas.
+    """
+
+    response = client.post(
+        "/api/sessions/start",
+        json={
+            "user_id": test_user.id,
+            "session_type": "study",
+            "goal_id": 123,
+        },
+    )
+
+    assert response.status_code == 201
+
+    session = response.get_json()["session"]
+
+    assert "goal_id" not in session
+
+
+def test_start_session_without_weekly_goal(client, test_user):
+    """
+    Usuário pode iniciar sessão sem definir meta semanal.
+    """
+
+    response = client.post(
+        "/api/sessions/start",
+        json={
+            "user_id": test_user.id,
+            "session_type": "revision",
+        },
+    )
+
+    assert response.status_code == 201
+
+# ======================================================
+# PAUSE
+# ======================================================
+
+def test_pause_running_session(client, db_session, test_user):
+    """Deve pausar uma sessão em execução."""
+
     session = Session(
         user_id=test_user.id,
+        session_type="study",
+        status="running",
         started_at=datetime.now(timezone.utc),
-        duration_hours=Decimal("0.0000")
+        duration_hours=Decimal("0"),
+        paused_seconds=0,
     )
+
     db_session.add(session)
     db_session.commit()
 
-    resp = client.post("/api/sessions/set_goal", json={
-        "session_id": session.id,
-        "goal_id": test_goal.id
-    })
-    assert resp.status_code == 200
+    response = client.post(
+        "/api/sessions/pause",
+        json={"session_id": session.id},
+    )
+
+    assert response.status_code == 200
+
     db_session.refresh(session)
-    assert session.goal_id == test_goal.id
+
+    assert session.status == "paused"
+    assert session.paused_at is not None
 
 
-def test_invalid_inputs(client, db_session):
-    """Testa validações de input e erros"""
-    resp = client.post("/api/sessions/start", json={})
-    assert resp.status_code == 400
+def test_pause_already_paused_session(client, db_session, test_user):
+    """Não deve permitir pausar uma sessão já pausada."""
 
-    resp = client.post("/api/sessions/pause", json={"session_id": 999999})
-    assert resp.status_code == 404
+    session = Session(
+        user_id=test_user.id,
+        session_type="study",
+        status="paused",
+        started_at=datetime.now(timezone.utc),
+        paused_at=datetime.now(timezone.utc),
+        duration_hours=Decimal("0"),
+        paused_seconds=0,
+    )
 
-    resp = client.post("/api/sessions/set_goal", json={"session_id": 999999, "goal_id": 1})
-    assert resp.status_code == 404
+    db_session.add(session)
+    db_session.commit()
 
-    resp = client.post("/api/sessions/set_goal", json={"session_id": 1, "goal_id": 999999})
-    assert resp.status_code in (400, 404)
+    response = client.post(
+        "/api/sessions/pause",
+        json={"session_id": session.id},
+    )
+
+    assert response.status_code == 400
 
 
 def test_pause_finished_session(client, db_session, test_user):
-    """Tenta pausar sessão que já foi finalizada"""
+    """Não deve permitir pausar sessão finalizada."""
+
+    now = datetime.now(timezone.utc)
+
     session = Session(
         user_id=test_user.id,
+        session_type="study",
+        status="finished",
+        started_at=now,
+        finished_at=now,
+        duration_hours=Decimal("1"),
+    )
+
+    db_session.add(session)
+    db_session.commit()
+
+    response = client.post(
+        "/api/sessions/pause",
+        json={"session_id": session.id},
+    )
+
+    assert response.status_code == 400
+
+
+def test_pause_nonexistent_session(client):
+    """Sessão inexistente deve retornar 404."""
+
+    response = client.post(
+        "/api/sessions/pause",
+        json={"session_id": 999999},
+    )
+
+    assert response.status_code == 404
+
+# ======================================================
+# RESUME
+# ======================================================
+
+def test_resume_paused_session(client, db_session, test_user):
+    """Deve retomar uma sessão pausada."""
+
+    paused_at = datetime.now(timezone.utc)
+
+    session = Session(
+        user_id=test_user.id,
+        session_type="study",
+        status="paused",
+        started_at=datetime.now(timezone.utc),
+        paused_at=paused_at,
+        paused_seconds=0,
+        duration_hours=Decimal("0"),
+    )
+
+    db_session.add(session)
+    db_session.commit()
+
+    response = client.post(
+        "/api/sessions/resume",
+        json={"session_id": session.id},
+    )
+
+    assert response.status_code == 200
+
+    db_session.refresh(session)
+
+    assert session.status == "running"
+    assert session.paused_at is None
+    assert session.paused_seconds >= 0
+
+def test_resume_running_session(client, db_session, test_user):
+    """Não deve retomar sessão já em execução."""
+
+    session = Session(
+        user_id=test_user.id,
+        session_type="study",
+        status="running",
+        started_at=datetime.now(timezone.utc),
+        paused_seconds=0,
+        duration_hours=Decimal("0"),
+    )
+
+    db_session.add(session)
+    db_session.commit()
+
+    response = client.post(
+        "/api/sessions/resume",
+        json={"session_id": session.id},
+    )
+
+    assert response.status_code == 400
+
+def test_resume_finished_session(client, db_session, test_user):
+    """Não deve retomar sessão finalizada."""
+
+    session = Session(
+        user_id=test_user.id,
+        session_type="study",
+        status="finished",
         started_at=datetime.now(timezone.utc),
         finished_at=datetime.now(timezone.utc),
-        duration_hours=Decimal("1.0000")
+        duration_hours=Decimal("1"),
     )
+
     db_session.add(session)
     db_session.commit()
 
-    resp = client.post("/api/sessions/pause", json={"session_id": session.id})
-    assert resp.status_code == 400
+    response = client.post(
+        "/api/sessions/resume",
+        json={"session_id": session.id},
+    )
+
+    assert response.status_code == 400
+
+def test_resume_nonexistent_session(client):
+    """Não deve retomar sessão inexistente."""
+
+    response = client.post(
+        "/api/sessions/resume",
+        json={"session_id": 999999},
+    )
+
+    assert response.status_code == 404
 
 
-def test_restart_nonexistent_session(client):
-    """Tenta reiniciar sessão inexistente"""
-    resp = client.post("/api/sessions/restart", json={"session_id": 999999})
-    assert resp.status_code == 404
 
+# ======================================================
+# FINISH
+# ======================================================
 
-def test_finish_without_start(client, db_session, test_user):
-    """Tenta finalizar sessão sem ter iniciado corretamente"""
+def test_finish_running_session(client, db_session, test_user):
+    """Deve finalizar uma sessão em execução."""
+
     session = Session(
         user_id=test_user.id,
-        started_at=None,
-        finished_at=None,
-        duration_hours=Decimal("0.0000")
+        session_type="study",
+        status="running",
+        started_at=datetime.now(timezone.utc),
+        duration_hours=Decimal("0"),
+        paused_seconds=0,
     )
+
     db_session.add(session)
     db_session.commit()
 
-    resp = client.post("/api/sessions/finish", json={"session_id": session.id})
-    assert resp.status_code in (400, 500)
+    response = client.post(
+        "/api/sessions/finish",
+        json={"session_id": session.id},
+    )
+
+    assert response.status_code == 200
+
+    db_session.refresh(session)
+
+    assert session.status == "finished"
+    assert session.finished_at is not None
+    assert session.duration_hours >= Decimal("0")
+
+
+def test_finish_paused_session(client, db_session, test_user):
+    """Deve finalizar uma sessão pausada."""
+
+    now = datetime.now(timezone.utc)
+
+    session = Session(
+        user_id=test_user.id,
+        session_type="study",
+        status="paused",
+        started_at=now,
+        paused_at=now,
+        paused_seconds=10,
+        duration_hours=Decimal("0"),
+    )
+
+    db_session.add(session)
+    db_session.commit()
+
+    response = client.post(
+        "/api/sessions/finish",
+        json={"session_id": session.id},
+    )
+
+    assert response.status_code == 200
+
+    db_session.refresh(session)
+
+    assert session.status == "finished"
+    assert session.paused_at is None
+    assert session.finished_at is not None
+
+
+def test_finish_finished_session(client, db_session, test_user):
+    """Não deve finalizar uma sessão já finalizada."""
+
+    now = datetime.now(timezone.utc)
+
+    session = Session(
+        user_id=test_user.id,
+        session_type="study",
+        status="finished",
+        started_at=now,
+        finished_at=now,
+        duration_hours=Decimal("1"),
+    )
+
+    db_session.add(session)
+    db_session.commit()
+
+    response = client.post(
+        "/api/sessions/finish",
+        json={"session_id": session.id},
+    )
+
+    assert response.status_code == 400
+
+
+def test_finish_nonexistent_session(client):
+    """Não deve finalizar uma sessão inexistente."""
+
+    response = client.post(
+        "/api/sessions/finish",
+        json={"session_id": 999999},
+    )
+
+    assert response.status_code == 404
+
+
+def test_finish_session_without_goal(client, db_session, test_user):
+    """
+    Sessão pode ser finalizada mesmo sem meta semanal.
+    """
+
+    session = Session(
+        user_id=test_user.id,
+        session_type="study",
+        status="running",
+        started_at=datetime.now(timezone.utc),
+        duration_hours=Decimal("0"),
+        paused_seconds=0,
+    )
+
+    db_session.add(session)
+    db_session.commit()
+
+    response = client.post(
+        "/api/sessions/finish",
+        json={
+            "session_id": session.id,
+        },
+    )
+
+    assert response.status_code == 200
+
+    db_session.refresh(session)
+
+    assert session.status == "finished"
+
+# ======================================================
+# CANCEL
+# ======================================================
+
+def test_cancel_running_session(client, db_session, test_user):
+    """Deve cancelar uma sessão em execução."""
+
+    session = Session(
+        user_id=test_user.id,
+        session_type="study",
+        status="running",
+        started_at=datetime.now(timezone.utc),
+        duration_hours=Decimal("0"),
+        paused_seconds=0,
+    )
+
+    db_session.add(session)
+    db_session.commit()
+
+    session_id = session.id
+
+    response = client.post(
+        "/api/sessions/cancel",
+        json={"session_id": session.id},
+    )
+    
+    assert response.status_code == 200
+
+    db_session.expire_all()
+
+    assert db_session.get(Session, session_id) is None
+
+
+def test_cancel_paused_session(client, db_session, test_user):
+    """Deve cancelar uma sessão pausada."""
+
+    session = Session(
+        user_id=test_user.id,
+        session_type="study",
+        status="paused",
+        started_at=datetime.now(timezone.utc),
+        paused_at=datetime.now(timezone.utc),
+        duration_hours=Decimal("0"),
+        paused_seconds=120,
+    )
+
+    db_session.add(session)
+    db_session.commit()
+
+    session_id = session.id
+
+    response = client.post(
+        "/api/sessions/cancel",
+        json={"session_id": session.id},
+    )
+
+    assert response.status_code == 200
+
+    db_session.expire_all()
+
+    assert db_session.get(Session, session_id) is None
+
+
+def test_cancel_finished_session(client, db_session, test_user):
+    """Não deve cancelar uma sessão finalizada."""
+
+    now = datetime.now(timezone.utc)
+
+    session = Session(
+        user_id=test_user.id,
+        session_type="study",
+        status="finished",
+        started_at=now,
+        finished_at=now,
+        duration_hours=Decimal("1"),
+    )
+
+    db_session.add(session)
+    db_session.commit()
+
+    session_id = session.id
+
+    response = client.post(
+        "/api/sessions/cancel",
+        json={"session_id": session_id},
+    )
+
+    assert response.status_code == 400
+
+
+def test_cancel_nonexistent_session(client):
+    """Não deve cancelar sessão inexistente."""
+
+    response = client.post(
+        "/api/sessions/cancel",
+        json={"session_id": 999999},
+    )
+
+    assert response.status_code == 404
+
+
+
+# ======================================================
+# SET GOAL
+# ======================================================
+
+# (vazio)
+
+# ======================================================
+# LIST
+# ======================================================
+
+# (vazio)
