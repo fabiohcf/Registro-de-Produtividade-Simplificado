@@ -1,89 +1,107 @@
 # tests/test_sessions.py
 
-import uuid
+
 from datetime import datetime, timedelta, timezone
-from werkzeug.security import generate_password_hash
-from app.models.user import User
+from decimal import Decimal
 from app.models.session import Session
-from app.database import SessionLocal
-import pytest
 
 
-def test_create_session():
-    session = SessionLocal()
+def test_create_session(db_session, test_user):
 
-    try:
-        # Cria usuário único
-        unique_email = f"{uuid.uuid4()}@example.com"
-        user = User(
-            username="User Session",
-            email=unique_email,
-            password_hash=generate_password_hash("123456"),
-        )
-        session.add(user)
-        session.commit()
+    start_time = datetime.now(timezone.utc)
+    end_time = start_time + timedelta(hours=1)
 
-        # Cria sessão com tempos UTC
-        start_time = datetime.now(timezone.utc)
-        end_time = start_time + timedelta(hours=1)
-        duration_hours = (end_time - start_time).total_seconds() / 3600
+    sessao = Session(
+        user_id=test_user.id,
+        session_type="study",
+        status="finished",
+        started_at=start_time,
+        finished_at=end_time,
+        duration_hours=Decimal("1.0000"),
+        paused_seconds=0,
+    )
 
-        sessao = Session(
-            user_id=user.id,
-            started_at=start_time,
-            finished_at=end_time,
-            duration_hours=duration_hours,
-        )
-        session.add(sessao)
-        session.commit()
+    db_session.add(sessao)
+    db_session.commit()
 
-        # Busca do banco
-        db_sessao = session.query(Session).filter_by(user_id=user.id).first()
-        assert db_sessao is not None
-        assert db_sessao.user_id == user.id
+    db_sessao = (
+        db_session.query(Session)
+        .filter_by(user_id=test_user.id)
+        .first()
+    )
 
-        # Comparação UTC
-        assert db_sessao.started_at.astimezone(timezone.utc) == start_time
-        assert db_sessao.finished_at.astimezone(timezone.utc) == end_time
-        assert abs(float(db_sessao.duration_hours) - duration_hours) < 1e-6
+    assert db_sessao is not None
+    assert db_sessao.user_id == test_user.id
+    assert db_sessao.session_type == "study"
+    assert db_sessao.status == "finished"
+    assert db_sessao.finished_at is not None
 
-    finally:
-        session.close()
+    assert (
+        db_sessao.started_at.astimezone(timezone.utc)
+        == start_time
+    )
+
+    assert (
+        db_sessao.finished_at.astimezone(timezone.utc)
+        == end_time
+    )
 
 
-def test_start_pause_finish_session(client):
-    # Cria usuário para o teste
-    session = SessionLocal()
-    try:
-        unique_email = f"{uuid.uuid4()}@example.com"
-        user = User(
-            username="User API",
-            email=unique_email,
-            password_hash=generate_password_hash("123456"),
-        )
-        session.add(user)
-        session.commit()
-        user_id = user.id
-    finally:
-        session.close()
+def test_start_pause_resume_finish_session(client, test_user):
 
-    # Inicia sessão
-    resp = client.post("/api/sessions/start", json={"user_id": user_id})
-    assert resp.status_code == 201
-    session_id = resp.get_json()["session_id"]
+    response = client.post(
+        "/api/sessions/start",
+        json={
+            "user_id": test_user.id,
+            "session_type": "study",
+        },
+    )
 
-    # Pausa sessão
-    resp = client.post("/api/sessions/pause", json={"session_id": session_id})
-    assert resp.status_code == 200
-    data = resp.get_json()
-    assert "duration_hours" in data
+    assert response.status_code == 201
 
-    # Reinicia sessão
-    resp = client.post("/api/sessions/restart", json={"session_id": session_id})
-    assert resp.status_code == 200
+    session_id = (
+        response.get_json()["session"]["id"]
+    )
 
-    # Finaliza sessão
-    resp = client.post("/api/sessions/finish", json={"session_id": session_id})
-    assert resp.status_code == 200
-    data = resp.get_json()
-    assert "duration_hours" in data
+
+    response = client.post(
+        "/api/sessions/pause",
+        json={
+            "session_id": session_id
+        },
+    )
+
+    assert response.status_code == 200
+
+    session = response.get_json()["session"]
+
+    assert session["status"] == "paused"
+
+
+    response = client.post(
+        "/api/sessions/resume",
+        json={
+            "session_id": session_id
+        },
+    )
+
+    assert response.status_code == 200
+
+    session = response.get_json()["session"]
+
+    assert session["status"] == "running"
+
+
+    response = client.post(
+        "/api/sessions/finish",
+        json={
+            "session_id": session_id
+        },
+    )
+
+    assert response.status_code == 200
+
+    session = response.get_json()["session"]
+
+    assert session["status"] == "finished"
+    assert session["duration_hours"] >= 0

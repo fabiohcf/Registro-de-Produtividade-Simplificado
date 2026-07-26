@@ -1,8 +1,11 @@
 # tests/conftest.py
 
 import pytest
+import uuid
 from app import create_app
 from app.database import Base, engine, SessionLocal
+from werkzeug.security import generate_password_hash
+from app.models.user import User
 
 
 @pytest.fixture(scope="session")
@@ -45,3 +48,20 @@ def client(app, db_session):
     with app.test_client(use_cookies=True) as client:
         with app.app_context():
             yield client
+
+@pytest.fixture
+def test_user(db_session):
+    """
+    Cria um usuário padrão para testes.
+    """
+
+    user = User(
+        username="Test User",
+        email=f"{uuid.uuid4()}@example.com",
+        password_hash=generate_password_hash("123456"),
+    )
+
+    db_session.add(user)
+    db_session.commit()
+
+    return user
