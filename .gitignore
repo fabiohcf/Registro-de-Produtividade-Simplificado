@@ -140,3 +140,8 @@ logs/
 
 # Logs gerados durante testes
 tests/logs/
+
+# Banco local de desenvolvimento
+*.db
+*.sqlite
+*.sqlite3

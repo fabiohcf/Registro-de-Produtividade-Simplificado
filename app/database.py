@@ -1,10 +1,11 @@
 # app/database.py
 
 import os
-from sqlalchemy import StaticPool, create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base, scoped_session
-from sqlalchemy.pool import StaticPool
+
 from dotenv import load_dotenv
+from sqlalchemy import create_engine
+from sqlalchemy.orm import declarative_base, scoped_session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 load_dotenv()
 
@@ -70,12 +71,3 @@ def get_db_session():
         db.close()
 
 
-def init_db():
-    """
-    Inicializa o banco criando as tabelas.
-    """
-    import app.models.user
-    import app.models.session
-    import app.models.goal
-
-    Base.metadata.create_all(bind=engine)

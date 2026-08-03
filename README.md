@@ -393,7 +393,7 @@ python app.py
 # Executando aplicação
 
 ```bash
-python app.py
+python run.py
 ```
 
 Aplicação disponível em:
